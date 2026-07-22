@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V79 KPI Dashboard - Digicel St. Lucia Service Delivery</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+
+  <!-- External Libraries via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-[#0a0b0e] text-[#e2e8f0] antialiased selection:bg-sky-500 selection:text-white font-sans">
+
+  <!-- App Wrapper -->
+  <div id="app" class="min-h-screen flex flex-col p-4 md:p-6 max-w-[1700px] mx-auto space-y-6">
+
+    <!-- Top Navigation Header -->
+    <header class="glass-panel p-4 md:p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border border-slate-800">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-600 to-emerald-600 flex items-center justify-center font-black text-2xl text-white shadow-lg tracking-wider">
+          V79
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl md:text-2xl font-black tracking-tight text-white">V79 KPI Dashboard</h1>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-950 text-rose-300 border border-rose-800/60 uppercase">
+              Digicel St. Lucia
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Service Delivery Operational Monitoring & Konnexx Export Analytics</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto tv-hide">
+        <button id="btn-load-sample" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Reload April Sample
+        </button>
+
+        <button id="btn-open-validation" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Validation Health
+        </button>
+
+        <div class="h-6 w-px bg-slate-800 mx-1"></div>
+
+        <!-- Export Dropdown / Buttons -->
+        <button id="btn-export-excel" class="px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-semibold rounded-xl border border-emerald-800/80 transition-all flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.293l5.414 5.414a1 1 0 01.293 1.414V19a2 2 0 01-2 2z"/></svg>
+          Export Excel
+        </button>
+
+        <button id="btn-export-csv" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all">
+          CSV
+        </button>
+
+        <button id="btn-export-pdf" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all">
+          Print PDF
+        </button>
+
+        <div class="h-6 w-px bg-slate-800 mx-1"></div>
+
+        <button id="btn-toggle-tv-mode" class="px-3 py-2 bg-blue-950/80 hover:bg-blue-900 text-blue-300 text-xs font-semibold rounded-xl border border-blue-800/80 transition-all flex items-center gap-1.5" title="Full Screen Operations Mode">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h6l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          TV Dashboard
+        </button>
+
+        <button id="btn-toggle-theme" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition-all" title="Toggle Light/Dark Theme">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- File Upload Drag & Drop Container -->
+    <section class="glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 tv-hide">
+      <div id="upload-drop-zone" class="border-2 border-dashed border-slate-700 hover:border-emerald-500/60 transition-all rounded-xl p-6 text-center cursor-pointer bg-slate-900/40 relative">
+        <input type="file" id="file-input-btn" multiple accept=".csv,.xlsx,.xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+        <div class="flex flex-col items-center justify-center space-y-2">
+          <div class="w-12 h-12 rounded-full bg-emerald-950/80 border border-emerald-800/80 flex items-center justify-center text-emerald-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-white">Drag & drop Konnexx job exports here, or <span class="text-emerald-400 underline">browse files</span></p>
+            <p class="text-xs text-slate-400 mt-1">Supports CSV, XLSX (Multiple files automatically merged and deduplicated by Job Number)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload Progress Banner -->
+      <div id="upload-progress-banner" class="hidden mt-4 p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1.5">
+        <div class="flex justify-between text-xs text-slate-300">
+          <span id="upload-progress-text">Processing files...</span>
+          <span class="font-mono text-emerald-400 font-bold">In Progress</span>
+        </div>
+        <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div id="upload-progress-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-300 w-0"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Department Navigation Tabs -->
+    <nav class="flex items-center gap-2 p-1.5 bg-slate-900/80 border border-slate-800 rounded-xl w-full overflow-x-auto">
+      <button class="dept-tab-btn px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 text-white shadow-lg whitespace-nowrap" data-dept="ALL">
+        All Service Delivery Operations
+      </button>
+      <button class="dept-tab-btn px-4 py-2 text-xs font-bold rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 whitespace-nowrap" data-dept="St. Lucia Installations">
+        St. Lucia Installations (MTTI Focus)
+      </button>
+      <button class="dept-tab-btn px-4 py-2 text-xs font-bold rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 whitespace-nowrap" data-dept="St. Lucia Fault Repair External">
+        St. Lucia Fault Repair External (MTTR Focus)
+      </button>
+    </nav>
+
+    <!-- Global Filter Toolbar -->
+    <section class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 space-y-4 tv-hide">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Global Operational Filters</h2>
+        </div>
+
+        <!-- Presets and Controls -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs text-slate-400 font-medium mr-1">Date Quick Presets:</span>
+          <button data-preset="all" class="date-preset-btn px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300">All</button>
+          <button data-preset="today" class="date-preset-btn px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300">Today</button>
+          <button data-preset="7days" class="date-preset-btn px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300">Last 7 Days</button>
+          <button data-preset="30days" class="date-preset-btn px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300">Last 30 Days</button>
+          <button data-preset="this-month" class="date-preset-btn px-2.5 py-1 text-[11px] font-medium bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300">This Month</button>
+
+          <div class="h-4 w-px bg-slate-700 mx-1"></div>
+
+          <!-- Business vs Calendar Hours Switch -->
+          <label class="inline-flex items-center cursor-pointer text-xs text-slate-300 font-semibold gap-2 bg-slate-900/80 px-3 py-1 rounded-lg border border-slate-800">
+            <span>Business Hours</span>
+            <input type="checkbox" id="toggle-hours-mode" class="sr-only peer" />
+            <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500 relative"></div>
+          </label>
+
+          <button id="btn-reset-filters" class="px-2.5 py-1 text-[11px] font-bold text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 rounded-lg border border-rose-800/50">
+            Reset Filters
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Controls Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-2.5">
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Start Date</label>
+          <input type="date" id="filter-start-date" class="filter-input w-full" />
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">End Date</label>
+          <input type="date" id="filter-end-date" class="filter-input w-full" />
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Department</label>
+          <select id="filter-department" class="filter-select w-full">
+            <option value="ALL">All Departments</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Engineer</label>
+          <select id="filter-engineer" class="filter-select w-full">
+            <option value="ALL">All Engineers</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Status</label>
+          <select id="filter-status" class="filter-select w-full">
+            <option value="ALL">All Statuses</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Region / City</label>
+          <select id="filter-region" class="filter-select w-full">
+            <option value="ALL">All Regions</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Technology</label>
+          <select id="filter-technology" class="filter-select w-full">
+            <option value="ALL">All Tech</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Priority</label>
+          <select id="filter-priority" class="filter-select w-full">
+            <option value="ALL">All Priorities</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Category</label>
+          <select id="filter-category" class="filter-select w-full">
+            <option value="ALL">All Categories</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Sub Category</label>
+          <select id="filter-subcategory" class="filter-select w-full">
+            <option value="ALL">All Sub Categories</option>
+          </select>
+        </div>
+        <div class="col-span-2 sm:col-span-1">
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Search Customer / Job #</label>
+          <input type="text" id="filter-customer-search" placeholder="Search..." class="filter-input w-full" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Executive Operational Summary -->
+    <section class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Executive Operational Briefing</h3>
+      </div>
+      <div id="executive-summary-content" class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+        <!-- Executive summary plain-English sentences generated dynamically -->
+      </div>
+    </section>
+
+    <!-- Top KPI Cards Grid -->
+    <section class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-10 gap-3">
+      <!-- 1. Total Jobs -->
+      <div class="kpi-card kpi-card-blue" data-drilldown="TOTAL">
+        <span class="kpi-title">Total Jobs</span>
+        <div id="kpi-total-jobs" class="kpi-value">0</div>
+        <span class="kpi-subtext text-[11px]">All Ingested Jobs</span>
+      </div>
+
+      <!-- 2. Completed Jobs -->
+      <div class="kpi-card kpi-card-green" data-drilldown="COMPLETED">
+        <span class="kpi-title">Completed Jobs</span>
+        <div id="kpi-completed-jobs" class="kpi-value text-emerald-400">0</div>
+        <span class="kpi-subtext text-emerald-400/80 font-medium">Closed & Resolved</span>
+      </div>
+
+      <!-- 3. Created Jobs -->
+      <div class="kpi-card kpi-card-blue" data-drilldown="CREATED">
+        <span class="kpi-title">Created Jobs</span>
+        <div id="kpi-created-jobs" class="kpi-value text-blue-400">0</div>
+        <span class="kpi-subtext">New Jobs Logged</span>
+      </div>
+
+      <!-- 4. Confirmed Jobs -->
+      <div class="kpi-card kpi-card-cyan" data-drilldown="CONFIRMED">
+        <span class="kpi-title">Confirmed Jobs</span>
+        <div id="kpi-confirmed-jobs" class="kpi-value text-cyan-400">0</div>
+        <span class="kpi-subtext">Dispatched/Appointed</span>
+      </div>
+
+      <!-- 5. Open Jobs -->
+      <div class="kpi-card kpi-card-amber" data-drilldown="OPEN">
+        <span class="kpi-title">Open Jobs</span>
+        <div id="kpi-open-jobs" class="kpi-value text-amber-400">0</div>
+        <span class="kpi-subtext text-amber-400/80 font-medium">Active In-Flight</span>
+      </div>
+
+      <!-- 6. Avg MTTI -->
+      <div class="kpi-card kpi-card-green" data-drilldown="COMPLETED">
+        <span class="kpi-title">Avg MTTI</span>
+        <div id="kpi-mtti-hours" class="kpi-value text-emerald-400 text-xl md:text-2xl">0.0 hrs</div>
+        <span id="kpi-mtti-days" class="kpi-subtext text-slate-400">0.0 days</span>
+      </div>
+
+      <!-- 7. Avg MTTR -->
+      <div class="kpi-card kpi-card-amber" data-drilldown="COMPLETED">
+        <span class="kpi-title">Avg MTTR</span>
+        <div id="kpi-mttr-hours" class="kpi-value text-amber-400 text-xl md:text-2xl">0.0 hrs</div>
+        <span id="kpi-mttr-days" class="kpi-subtext text-slate-400">0.0 days</span>
+      </div>
+
+      <!-- 8. Avg Open Age -->
+      <div class="kpi-card kpi-card-purple" data-drilldown="OPEN">
+        <span class="kpi-title">Avg Open Age</span>
+        <div id="kpi-open-age" class="kpi-value text-purple-400 text-xl md:text-2xl">0.0 days</div>
+        <span class="kpi-subtext text-slate-400">Current Backlog Age</span>
+      </div>
+
+      <!-- 9. Backlog -->
+      <div class="kpi-card kpi-card-red" data-drilldown="OPEN">
+        <span class="kpi-title">Backlog</span>
+        <div id="kpi-backlog" class="kpi-value text-rose-400">0</div>
+        <span class="kpi-subtext text-rose-400/80">Pending Action</span>
+      </div>
+
+      <!-- 10. SLA % -->
+      <div class="kpi-card kpi-card-green" data-drilldown="COMPLETED">
+        <span class="kpi-title">SLA Attainment</span>
+        <div id="kpi-sla-percentage" class="kpi-value text-emerald-400">0%</div>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2 overflow-hidden">
+          <div id="kpi-sla-bar" class="h-2 rounded-full bg-emerald-500 w-0"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Status Breakdown Interactive Pills Grid -->
+    <section class="glass-panel p-4 rounded-2xl border border-slate-800 space-y-2">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Status Distribution (Click to Drill Down)</h3>
+      <div id="status-breakdown-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2.5">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Main Charts Section -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Chart 1: Weekly MTTI Trend -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Weekly MTTI Trend (St. Lucia Installations)
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-weekly-mtti', 'Weekly_MTTI_Trend.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-weekly-mtti"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Weekly MTTR Trend -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span> Weekly MTTR Trend (St. Lucia Fault Repair External)
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-weekly-mttr', 'Weekly_MTTR_Trend.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-weekly-mttr"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Completed vs Created -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span> Jobs Created vs Completed Volume
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-completed-created', 'Completed_vs_Created.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-completed-created"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 4: Open Jobs Age Distribution -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-rose-400"></span> Open Jobs Backlog Age Distribution
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-open-age', 'Open_Age_Distribution.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-open-age"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 5: Status Breakdown Doughnut -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-purple-400"></span> Status Share
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-status', 'Status_Share.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-status"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 6: Engineer Output Leaderboard -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Engineer Completion Leaderboard
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-engineer', 'Engineer_Performance.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-engineer"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 7: Department Comparison -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Department Volume Comparison
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-department', 'Department_Comparison.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-department"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 8: Regional SLA Performance -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> SLA Attainment % by Region
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-region-sla', 'Region_SLA_Performance.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-region-sla"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 9: Monthly Trend -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span> Monthly Job Volume Trend
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-monthly', 'Monthly_Trend.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-monthly"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 10: Rolling Average -->
+      <div class="glass-panel p-4 md:p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Rolling 7-Day Turnaround Average
+          </h3>
+          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-rolling-average', 'Rolling_Average.png')">PNG</button>
+        </div>
+        <div class="chart-card-container">
+          <canvas id="chart-rolling-average"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Week-on-Week KPI Table -->
+    <section class="glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 space-y-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <h3 class="text-base font-bold text-white">Week-on-Week KPI Breakdown</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Weekly comparison of Created Jobs, Completed Jobs, MTTI, MTTR, Open Backlog Age, and WoW Output Improvement %</p>
+        </div>
+      </div>
+
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Week Number</th>
+              <th class="text-right">Jobs Created</th>
+              <th class="text-right">Jobs Completed</th>
+              <th class="text-right">Avg MTTI (Hours)</th>
+              <th class="text-right">Avg MTTR (Hours)</th>
+              <th class="text-right">Avg Open Age</th>
+              <th class="text-right">Backlog Count</th>
+              <th class="text-right">WoW Output Change %</th>
+            </tr>
+          </thead>
+          <tbody id="week-on-week-tbody">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Engineer Performance Leaderboard & Scorecards -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-base font-bold text-white">Engineer Field Performance Leaderboard</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Ranked by volume of completed jobs and turnaround efficiency</p>
+          </div>
+        </div>
+
+        <div class="data-table-wrapper max-h-[420px] overflow-y-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Engineer Name</th>
+                <th class="text-right">Completed Jobs</th>
+                <th class="text-right">Avg Completion Time</th>
+                <th class="text-right">Active Open Jobs</th>
+                <th class="text-right">Oldest Open Job Age</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="engineer-leaderboard-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Extremes: Top 10 Longest & Fastest Jobs -->
+      <div class="glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 space-y-4 flex flex-col justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white">Turnaround Outliers</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Fastest vs. Longest completed jobs in dataset</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4">
+          <div>
+            <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              Top 10 Fastest Completions
+            </h4>
+            <div id="fastest-jobs-container" class="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <div class="border-t border-slate-800 pt-3">
+            <h4 class="text-xs font-bold text-rose-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Top 10 Longest Completions
+            </h4>
+            <div id="slowest-jobs-container" class="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-slate-500 py-4 border-t border-slate-900 tv-hide">
+      V79 KPI Dashboard &bull; Digicel St. Lucia Service Delivery Operations &bull; Engine version 1.0.0
+    </footer>
+
+  </div>
+
+  <!-- Drill-Down Job Records Modal -->
+  <div id="modal-drilldown" class="modal-container hidden">
+    <div class="modal-content">
+      <div class="p-4 md:p-6 border-b border-slate-800 flex justify-between items-center">
+        <div>
+          <div class="flex items-center gap-3">
+            <h3 id="modal-drilldown-title" class="text-lg font-bold text-white">Matching Job Records</h3>
+            <span id="modal-drilldown-count" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+              0 records
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Click any column header to sort or search to filter matching jobs</p>
+        </div>
+        <button class="modal-close-btn p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer" onclick="this.closest('.modal-container').classList.add('hidden')">
+          <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-4 border-b border-slate-800/80 bg-slate-900/50 flex justify-between items-center gap-4">
+        <input type="text" id="modal-drilldown-search" placeholder="Filter modal records by Job #, Customer, Engineer..." class="filter-input w-full max-w-md" />
+        <button class="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-semibold rounded-lg border border-emerald-800" onclick="window.v79App && window.exportEngine.exportToCSV(window.dashboardManager.currentDrillDownList, 'Drilldown_Jobs_Export.csv')">
+          Export Modal Data CSV
+        </button>
+      </div>
+
+      <div class="p-4 overflow-y-auto max-h-[60vh]">
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Job Number</th>
+                <th>Customer</th>
+                <th>Engineer</th>
+                <th>Created</th>
+                <th>Finished</th>
+                <th class="text-right">Turnaround (Hrs)</th>
+                <th class="text-right">Open Age</th>
+                <th>Status</th>
+                <th>Department</th>
+                <th>Region</th>
+              </tr>
+            </thead>
+            <tbody id="modal-drilldown-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="p-4 border-t border-slate-800 flex justify-end bg-slate-900/40">
+        <button class="modal-close-btn px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer" onclick="this.closest('.modal-container').classList.add('hidden')">
+          <svg class="w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Close Window
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Validation Health Modal -->
+  <div id="modal-validation-report" class="modal-container hidden">
+    <div class="modal-content max-w-3xl">
+      <div class="p-4 md:p-6 border-b border-slate-800 flex justify-between items-center">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Data Cleaning & Validation Audit Report
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Sanitization results from Konnexx export parser</p>
+        </div>
+        <button class="modal-close-btn p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer" aria-label="Close Modal" onclick="this.closest('.modal-container').classList.add('hidden')">
+          <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="modal-validation-body" class="p-4 overflow-y-auto max-h-[70vh]">
+        <!-- Validation details rendered dynamically -->
+      </div>
+      
+      <div class="p-4 border-t border-slate-800 flex justify-end bg-slate-900/40">
+        <button class="modal-close-btn px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer" onclick="this.closest('.modal-container').classList.add('hidden')">
+          <svg class="w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Close Window
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Main Module Entry -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "V79 KPI Dashboard",
+  "description": "Operational KPI Dashboard for Digicel St. Lucia Service Delivery monitoring Konnexx job exports (MTTI, MTTR, SLA, weekly trends, engineer leaderboards).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

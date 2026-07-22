@@ -1,0 +1,107 @@
+/* V79 KPI Dashboard - Dashboard Components (Immersive UI Theme) */
+
+/* Filter Controls Toolbar */
+.filter-select, .filter-input {
+  background-color: #11141b;
+  border: 1px solid #2d323d;
+  color: #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.light-theme .filter-select, .light-theme .filter-input {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.filter-select:focus, .filter-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+/* Department Tabs */
+.dept-tab-btn {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Modal Overlay & Container */
+.modal-container {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(10, 11, 14, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 1rem;
+}
+
+.modal-container.hidden {
+  display: none !important;
+}
+
+.modal-content {
+  background-color: #1a1f28;
+  border: 1px solid #2d323d;
+  border-radius: 12px;
+  max-width: 90vw;
+  width: 1200px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Charts Card Outer Canvas */
+.chart-card-container {
+  position: relative;
+  width: 100%;
+  height: 280px;
+}
+
+/* Table styling */
+.data-table-wrapper {
+  overflow-x: auto;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.data-table th {
+  background-color: #11141b;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid #2d323d;
+}
+.data-table td {
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  border-bottom: 1px solid #1f2937;
+  color: #e2e8f0;
+}
+.data-table tr:hover td {
+  background-color: rgba(56, 189, 248, 0.04);
+}
+
