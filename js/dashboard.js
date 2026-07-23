@@ -278,13 +278,7 @@ export class DashboardManager {
     // Group jobs by Period (Week or Month)
     const periodMap = {};
 
-    this.filteredJobs.forEach((j) => {
-      const dateToUse = j.dateFinished || j.dateCreated;
-      if (!dateToUse) return;
-
-      const periodKey = isMonthly ? getMonthKey(dateToUse) : getISOWeekKey(dateToUse);
-      const periodLabel = isMonthly ? getMonthString(dateToUse) : getISOWeekString(dateToUse);
-
+    const getOrCreatePeriod = (periodKey, periodLabel) => {
       if (!periodMap[periodKey]) {
         periodMap[periodKey] = {
           periodKey,
@@ -296,26 +290,39 @@ export class DashboardManager {
           openAges: []
         };
       }
+      return periodMap[periodKey];
+    };
 
-      if (j.dateCreated && (isMonthly ? getMonthKey(j.dateCreated) : getISOWeekKey(j.dateCreated)) === periodKey) {
-        periodMap[periodKey].created++;
+    this.filteredJobs.forEach((j) => {
+      // Tally "created" against the job's own creation period
+      if (j.dateCreated) {
+        const createdKey = isMonthly ? getMonthKey(j.dateCreated) : getISOWeekKey(j.dateCreated);
+        const createdLabel = isMonthly ? getMonthString(j.dateCreated) : getISOWeekString(j.dateCreated);
+        getOrCreatePeriod(createdKey, createdLabel).created++;
       }
 
-      if (j.isCompleted && j.dateFinished && (isMonthly ? getMonthKey(j.dateFinished) : getISOWeekKey(j.dateFinished)) === periodKey && !j.isNegativeDuration) {
-        periodMap[periodKey].completed++;
+      // Tally "completed" (and MTTI/MTTR durations) against the job's own completion period
+      if (j.isCompleted && j.dateFinished && !j.isNegativeDuration) {
+        const finishedKey = isMonthly ? getMonthKey(j.dateFinished) : getISOWeekKey(j.dateFinished);
+        const finishedLabel = isMonthly ? getMonthString(j.dateFinished) : getISOWeekString(j.dateFinished);
+        const bucket = getOrCreatePeriod(finishedKey, finishedLabel);
+        bucket.completed++;
         const dur = this.useBusinessHours ? j.businessHours : j.durationHours;
         if (j.department.toLowerCase().includes('install')) {
-          periodMap[periodKey].installDurations.push(dur);
+          bucket.installDurations.push(dur);
         } else if (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external')) {
-          periodMap[periodKey].faultDurations.push(dur);
+          bucket.faultDurations.push(dur);
         }
       }
 
-      if (j.isOpen && (
+      // Open jobs have no finish date, so bucket their backlog age against their creation period
+      if (j.isOpen && j.dateCreated && (
         j.department.toLowerCase().includes('install') ||
         (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
       )) {
-        periodMap[periodKey].openAges.push(j.openAgeHours || 0);
+        const createdKey = isMonthly ? getMonthKey(j.dateCreated) : getISOWeekKey(j.dateCreated);
+        const createdLabel = isMonthly ? getMonthString(j.dateCreated) : getISOWeekString(j.dateCreated);
+        getOrCreatePeriod(createdKey, createdLabel).openAges.push(j.openAgeHours || 0);
       }
     });
 

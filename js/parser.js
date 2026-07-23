@@ -223,23 +223,6 @@ export function parseAndCleanData(rawRows, referenceDate = new Date()) {
     if (job.dateCreated && job.dateCreated > maxDateInDataset) maxDateInDataset = job.dateCreated;
     if (job.dateFinished && job.dateFinished > maxDateInDataset) maxDateInDataset = job.dateFinished;
 
-    // Deduplication check
-    if (seenJobNumbers.has(job.jobNumber)) {
-      report.duplicatesRemovedCount++;
-      report.duplicateJobNumbers.push(job.jobNumber);
-      // Keep existing or replace if this row has a finish date and previous didn't
-      const existingJob = seenJobNumbers.get(job.jobNumber);
-      if (!existingJob.dateFinished && job.dateFinished) {
-        // Replace with more complete record
-        const index = cleanedJobs.indexOf(existingJob);
-        if (index !== -1) cleanedJobs[index] = job;
-        seenJobNumbers.set(job.jobNumber, job);
-      }
-      continue;
-    }
-
-    seenJobNumbers.set(job.jobNumber, job);
-
     // Status Normalization
     const statusLower = job.status.toLowerCase();
     if (statusLower.includes('complete') || statusLower.includes('closed')) {
@@ -299,6 +282,28 @@ export function parseAndCleanData(rawRows, referenceDate = new Date()) {
     } else if (deptLower.includes('fault') && deptLower.includes('internal')) {
       job.department = 'St. Lucia Fault Repair Internal';
     }
+
+    // Deduplication check (job is now fully processed, so a replacement record is just as complete as a first-seen one)
+    if (seenJobNumbers.has(job.jobNumber)) {
+      report.duplicatesRemovedCount++;
+      report.duplicateJobNumbers.push(job.jobNumber);
+      // Keep existing or replace if this row has a finish date and previous didn't
+      const existingJob = seenJobNumbers.get(job.jobNumber);
+      if (!existingJob.dateFinished && job.dateFinished) {
+        // Replace with more complete record
+        const index = cleanedJobs.indexOf(existingJob);
+        if (index !== -1) cleanedJobs[index] = job;
+        seenJobNumbers.set(job.jobNumber, job);
+        // Reconcile department/status distribution counts to reflect the swap
+        report.departmentCounts[existingJob.department] = Math.max(0, (report.departmentCounts[existingJob.department] || 0) - 1);
+        report.statusCounts[existingJob.status] = Math.max(0, (report.statusCounts[existingJob.status] || 0) - 1);
+        report.departmentCounts[job.department] = (report.departmentCounts[job.department] || 0) + 1;
+        report.statusCounts[job.status] = (report.statusCounts[job.status] || 0) + 1;
+      }
+      continue;
+    }
+
+    seenJobNumbers.set(job.jobNumber, job);
 
     // Department & Status distribution counting
     report.departmentCounts[job.department] = (report.departmentCounts[job.department] || 0) + 1;

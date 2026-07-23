@@ -1,7 +1,7 @@
 /**
  * Executive Summary and Validation Report Generator
  */
-import { formatNumber, formatHours, formatDays, formatDate, parseDate } from './utils.js';
+import { formatNumber, formatHours, formatDays, formatDate, parseDate, getFiscalYearStartDateString } from './utils.js';
 import { calculateMTTI } from './mtti.js';
 import { calculateMTTR } from './mttr.js';
 
@@ -53,8 +53,7 @@ export function generateExecutiveSummary(jobs, useBusinessHours = false) {
 
   // If still not present, show defaults (April 1st to Present)
   if (!startDateStr) {
-    const currentYear = new Date().getFullYear();
-    startDateStr = `${currentYear}-04-01`;
+    startDateStr = getFiscalYearStartDateString();
   }
   if (!endDateStr) {
     endDateStr = new Date().toISOString().substring(0, 10);
@@ -63,7 +62,7 @@ export function generateExecutiveSummary(jobs, useBusinessHours = false) {
   const startParsed = parseDate(startDateStr);
   const endParsed = parseDate(endDateStr);
 
-  const startFormatted = startParsed ? formatDate(startParsed).split(' ')[0] : '01/04/' + new Date().getFullYear();
+  const startFormatted = startParsed ? formatDate(startParsed).split(' ')[0] : formatDate(parseDate(getFiscalYearStartDateString())).split(' ')[0];
   const endFormatted = endParsed ? formatDate(endParsed).split(' ')[0] : formatDate(new Date()).split(' ')[0];
 
   const dateRangeStr = `${startFormatted} to ${endFormatted}`;

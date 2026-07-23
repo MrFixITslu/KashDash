@@ -246,6 +246,19 @@ export function getMonthString(date) {
 }
 
 /**
+ * Get the fiscal year start date string (April 1st) used as the default
+ * filter/report start date. The fiscal year runs April 1 - March 31, so if
+ * "today" falls in Jan/Feb/Mar, the fiscal year began on April 1st of the
+ * PREVIOUS calendar year, not the current one.
+ * @param {Date} [referenceDate] - Defaults to now
+ * @returns {string} YYYY-04-01
+ */
+export function getFiscalYearStartDateString(referenceDate = new Date()) {
+  const year = referenceDate.getMonth() < 3 ? referenceDate.getFullYear() - 1 : referenceDate.getFullYear();
+  return `${year}-04-01`;
+}
+
+/**
  * Percentage difference calculation
  */
 export function calculatePercentageChange(oldVal, newVal) {

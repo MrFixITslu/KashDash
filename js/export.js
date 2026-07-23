@@ -1,10 +1,9 @@
 /**
  * Multi-format Export Engine (CSV, Excel XLSX, PDF Print View, PNG Charts)
  */
-import { formatDate, formatHours, formatDays, formatNumber, parseDate } from './utils.js';
+import { formatDate, formatHours, formatDays, formatNumber, parseDate, getFiscalYearStartDateString } from './utils.js';
 import { calculateMTTI } from './mtti.js';
 import { calculateMTTR } from './mttr.js';
-import html2pdf from 'html2pdf.js';
 import { chartManager } from './charts.js';
 import { generateExecutiveSummary } from './reports.js';
 
@@ -187,8 +186,7 @@ export class ExportEngine {
 
     // If still not present, show defaults (April 1st to Present)
     if (!startDateStr) {
-      const currentYear = new Date().getFullYear();
-      startDateStr = `${currentYear}-04-01`;
+      startDateStr = getFiscalYearStartDateString();
     }
     if (!endDateStr) {
       endDateStr = new Date().toISOString().substring(0, 10);
@@ -197,7 +195,7 @@ export class ExportEngine {
     const startParsed = parseDate(startDateStr);
     const endParsed = parseDate(endDateStr);
 
-    const startFormatted = startParsed ? formatDate(startParsed).split(' ')[0] : '01/04/' + new Date().getFullYear();
+    const startFormatted = startParsed ? formatDate(startParsed).split(' ')[0] : formatDate(parseDate(getFiscalYearStartDateString())).split(' ')[0];
     const endFormatted = endParsed ? formatDate(endParsed).split(' ')[0] : formatDate(new Date()).split(' ')[0];
 
     const dateRangeStr = `${startFormatted} to ${endFormatted}`;
@@ -764,9 +762,13 @@ export class ExportEngine {
         pagebreak: { mode: ['css', 'legacy'] }
       };
 
-      const html2pdfLib = window.html2pdf || html2pdf;
+      if (typeof window.html2pdf === 'undefined') {
+        alert('html2pdf.js library is still loading or unavailable. Please try again in a moment.');
+        restoreStyles();
+        return;
+      }
 
-      html2pdfLib().from(element).set(opt).save().then(() => {
+      window.html2pdf().from(element).set(opt).save().then(() => {
         restoreStyles();
       }).catch((err) => {
         console.error('PDF generation error:', err);
@@ -787,3 +789,4 @@ export class ExportEngine {
 }
 
 export const exportEngine = new ExportEngine();
+window.exportEngine = exportEngine;

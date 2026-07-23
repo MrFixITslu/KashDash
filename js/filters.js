@@ -1,15 +1,14 @@
 /**
  * Global Filtering Engine
  */
-import { parseDate } from './utils.js';
+import { parseDate, getFiscalYearStartDateString } from './utils.js';
 
 export class FilterController {
   constructor(onChangeCallback) {
     this.onChangeCallback = onChangeCallback;
-    const currentYear = new Date().getFullYear();
     const todayStr = new Date().toISOString().substring(0, 10);
     this.state = {
-      startDate: `${currentYear}-04-01`,
+      startDate: getFiscalYearStartDateString(),
       endDate: todayStr,
       department: 'ALL',
       engineer: 'ALL',
@@ -183,10 +182,9 @@ export class FilterController {
   }
 
   reset() {
-    const currentYear = new Date().getFullYear();
     const todayStr = new Date().toISOString().substring(0, 10);
     this.state = {
-      startDate: `${currentYear}-04-01`,
+      startDate: getFiscalYearStartDateString(),
       endDate: todayStr,
       department: 'ALL',
       engineer: 'ALL',
@@ -236,8 +234,7 @@ export class FilterController {
       let endDateStr = this.state.endDate;
 
       if (!startDateStr) {
-        const currentYear = new Date().getFullYear();
-        startDateStr = `${currentYear}-04-01`;
+        startDateStr = getFiscalYearStartDateString();
       }
       if (!endDateStr) {
         endDateStr = new Date().toISOString().substring(0, 10);
