@@ -292,41 +292,100 @@ export class ExportEngine {
     printContainer.className = 'fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center p-4 overflow-y-auto';
 
     let mttiImgSection = mttiImg ? `
-      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
-        <h4 class="text-xs font-bold text-slate-700 uppercase">Weekly MTTI Trend (St. Lucia Installations)</h4>
-        <img src="${mttiImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
+      <div class="chart-card" style="border-top-color:#059669; page-break-inside: avoid; break-inside: avoid;">
+        <div class="chart-card-eyebrow" style="color:#059669;">Trend · Weekly</div>
+        <h4 class="chart-card-title">MTTI (St. Lucia Installations)</h4>
+        <img src="${mttiImg}" class="chart-card-img" />
       </div>
     ` : '';
 
     let mttrImgSection = mttrImg ? `
-      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
-        <h4 class="text-xs font-bold text-slate-700 uppercase">Weekly MTTR Trend (St. Lucia Fault Repair External)</h4>
-        <img src="${mttrImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
+      <div class="chart-card" style="border-top-color:#d97706; page-break-inside: avoid; break-inside: avoid;">
+        <div class="chart-card-eyebrow" style="color:#d97706;">Trend · Weekly</div>
+        <h4 class="chart-card-title">MTTR (St. Lucia Fault Repair External)</h4>
+        <img src="${mttrImg}" class="chart-card-img" />
       </div>
     ` : '';
 
     let openAgeImgSection = openAgeImg ? `
-      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
-        <h4 class="text-xs font-bold text-slate-700 uppercase">Open Jobs Backlog Age Distribution</h4>
-        <img src="${openAgeImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
+      <div class="chart-card" style="border-top-color:#e11d48; page-break-inside: avoid; break-inside: avoid;">
+        <div class="chart-card-eyebrow" style="color:#e11d48;">Backlog · Aging</div>
+        <h4 class="chart-card-title">Open Jobs Backlog Age Distribution</h4>
+        <img src="${openAgeImg}" class="chart-card-img" />
       </div>
     ` : '';
 
     let deptImgSection = deptImg ? `
-      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
-        <h4 class="text-xs font-bold text-slate-700 uppercase">Department Volume Comparison</h4>
-        <img src="${deptImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
+      <div class="chart-card" style="border-top-color:#64748b; page-break-inside: avoid; break-inside: avoid;">
+        <div class="chart-card-eyebrow" style="color:#64748b;">Volume · Comparison</div>
+        <h4 class="chart-card-title">Department Volume Comparison</h4>
+        <img src="${deptImg}" class="chart-card-img" />
       </div>
     ` : '';
 
     let rollingAvgImgSection = rollingAvgImg ? `
-      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
-        <h4 class="text-xs font-bold text-slate-700 uppercase">Rolling 7-Day Turnaround Average</h4>
-        <img src="${rollingAvgImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
+      <div class="chart-card" style="border-top-color:#0284c7; page-break-inside: avoid; break-inside: avoid;">
+        <div class="chart-card-eyebrow" style="color:#0284c7;">Momentum · Rolling 7-Day</div>
+        <h4 class="chart-card-title">Rolling Turnaround Average</h4>
+        <img src="${rollingAvgImg}" class="chart-card-img" />
       </div>
     ` : '';
 
+    // Inline SVG radial gauge for SLA/attainment percentages — used in place of bare numbers
+    // so the report's signature "signal ring" motif (this app's core subject: SLA health) carries
+    // through consistently rather than being decorative.
+    const renderGaugeSVG = (percentage, color) => {
+      const size = 76;
+      const stroke = 7;
+      const radius = (size - stroke) / 2;
+      const circumference = 2 * Math.PI * radius;
+      const clamped = Math.max(0, Math.min(100, isNaN(percentage) ? 0 : percentage));
+      const offset = circumference - (clamped / 100) * circumference;
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;">
+          <circle cx="${size / 2}" cy="${size / 2}" r="${radius}" fill="none" stroke="#e2e8f0" stroke-width="${stroke}" />
+          <circle cx="${size / 2}" cy="${size / 2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${stroke}"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round"
+            transform="rotate(-90 ${size / 2} ${size / 2})" />
+          <text x="50%" y="53%" text-anchor="middle" dominant-baseline="middle" font-size="16" font-weight="800" fill="#0f172a" font-family="Inter, system-ui, sans-serif">${clamped.toFixed(0)}%</text>
+        </svg>
+      `;
+    };
+
+    // Dynamic operational status derived from actual SLA attainment, not a static label
+    const combinedTotal = mtti.totalCompleted + mttr.totalCompleted;
+    const combinedSLA = combinedTotal > 0
+      ? ((mtti.slaMetCount + mttr.slaMetCount) / combinedTotal) * 100
+      : 0;
+    const statusInfo = combinedSLA >= 95
+      ? { label: 'On Target', color: '#059669', bg: '#ecfdf5' }
+      : combinedSLA >= 85
+        ? { label: 'Monitor', color: '#d97706', bg: '#fffbeb' }
+        : { label: 'Action Required', color: '#e11d48', bg: '#fff1f2' };
+
+    const deptDotColor = (dept) => {
+      if (dept === 'St. Lucia Installations') return '#059669';
+      if (dept === 'St. Lucia Fault Repair External') return '#d97706';
+      if (dept === 'St. Lucia Fault Repair Internal') return '#64748b';
+      return '#94a3b8';
+    };
+
     printContainer.innerHTML = `
+      <style>
+        #pdf-report-body { font-family: Inter, system-ui, sans-serif; }
+        #pdf-report-body .eyebrow { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+        #pdf-report-body .rail { border-left-width: 3px; border-left-style: solid; padding-left: 14px; }
+        #pdf-report-body .kpi-card { border-top-width: 3px; border-top-style: solid; background: #f8fafc; border-radius: 8px; padding: 14px 16px; }
+        #pdf-report-body .metric-card { border-top-width: 3px; border-top-style: solid; background: #f8fafc; border-radius: 10px; padding: 18px; }
+        #pdf-report-body .chart-card { border-top-width: 3px; border-top-style: solid; background: #ffffff; border: 1px solid #e2e8f0; border-top-width: 3px; border-radius: 10px; padding: 14px 16px 16px; margin-top: 16px; }
+        #pdf-report-body .chart-card-eyebrow { font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2px; }
+        #pdf-report-body .chart-card-title { font-size: 11px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px; }
+        #pdf-report-body .chart-card-img { width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+        #pdf-report-body .def-card { border-left-width: 3px; border-left-style: solid; padding: 4px 0 4px 12px; }
+        #pdf-report-body .def-term { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        #pdf-report-body .def-body { font-size: 11px; color: #475569; line-height: 1.55; }
+      </style>
+
       <div class="bg-white text-slate-900 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <!-- Modal Toolbar -->
         <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between no-print">
@@ -350,186 +409,199 @@ export class ExportEngine {
         </div>
 
         <!-- Report Content Body -->
-        <div id="pdf-report-body" class="p-8 overflow-y-auto space-y-6 bg-white text-slate-900">
-          <!-- Header -->
-          <div class="border-b border-slate-300 pb-4 flex justify-between items-start">
-            <div>
-              <h1 class="text-2xl font-black text-slate-900 tracking-tight">DIGICEL ST. LUCIA — D+ SERVICE DELIVERY</h1>
-              <h2 class="text-sm font-semibold text-slate-600 uppercase tracking-wide mt-1">Operational KPI & Executive Performance Report</h2>
-            </div>
-            <div class="text-right text-xs text-slate-500 font-mono">
-              <div>Generated: ${nowStr}</div>
-              <div class="text-slate-800 font-bold">Analysis Period: ${dateRangeStr}</div>
-              <div>Calculation Mode: ${useBusinessHours ? 'Business Hours (08:00 - 17:00 Weekdays)' : 'Calendar Hours (24/7)'}</div>
-            </div>
-          </div>
+        <div id="pdf-report-body" class="overflow-y-auto bg-white text-slate-900">
 
-          <!-- Executive Insights -->
-          <div class="mb-4">
-            <h3 class="font-bold text-slate-900 text-sm mb-2">Executive Overview</h3>
-            <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-              ${generateExecutiveSummary(filteredJobs, useBusinessHours)
-                .replace(/text-slate-200/g, 'text-slate-700')
-                .replace(/text-white/g, 'text-slate-900')
-                .replace(/bg-slate-800\/50/g, 'bg-transparent')
-                .replace(/bg-slate-800/g, 'bg-slate-200')
-                .replace(/border-slate-700\/50/g, 'border-slate-300')
-                .replace(/text-slate-400/g, 'text-slate-600')
-                .replace(/text-slate-300/g, 'text-slate-800')
-                .replace(/text-emerald-400/g, 'text-emerald-700')
-                .replace(/text-amber-400/g, 'text-amber-700')
-                .replace(/text-blue-400/g, 'text-blue-700')
-              }
-            </div>
-          </div>
-
-          <!-- Executive Summary Cards -->
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" style="page-break-before: always; break-before: page;">
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-              <div class="text-[11px] font-bold text-slate-500 uppercase">Filtered Job Volume</div>
-              <div class="text-xl font-black text-slate-900 mt-1">${total}</div>
-            </div>
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-              <div class="text-[11px] font-bold text-slate-500 uppercase">Completed Jobs</div>
-              <div class="text-xl font-black text-emerald-600 mt-1">${completed}</div>
-              <div class="text-[9px] text-slate-500 mt-1 leading-normal flex flex-wrap gap-1">
-                <span class="whitespace-nowrap">Installs: ${mtti.totalCompleted}</span>
-                <span class="text-slate-300">|</span>
-                <span class="whitespace-nowrap">Fault Ext: ${mttr.totalCompleted}</span>
-                <span class="text-slate-300">|</span>
-                <span class="whitespace-nowrap">Others: ${completed - mtti.totalCompleted - mttr.totalCompleted}</span>
+          <!-- Cover / Hero Band -->
+          <div style="background:#0f172a; position:relative; padding:26px 32px 22px;">
+            <div style="position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,#e11d48,#059669);"></div>
+            <div class="flex items-start justify-between gap-6">
+              <div>
+                <div class="flex items-center gap-2" style="margin-bottom:10px;">
+                  <span style="background:linear-gradient(135deg,#e11d48,#059669); width:26px; height:26px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; font-weight:900; color:#fff; font-size:12px;">D+</span>
+                  <span class="eyebrow" style="color:#94a3b8;">Digicel St. Lucia &middot; Service Delivery</span>
+                </div>
+                <h1 style="font-size:24px; font-weight:900; color:#fff; letter-spacing:-0.01em; line-height:1.2; margin:0;">Operational KPI &amp;<br/>Executive Performance Report</h1>
               </div>
-            </div>
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-              <div class="text-[11px] font-bold text-slate-500 uppercase">Open Backlog</div>
-              <div class="text-xl font-black text-blue-600 mt-1">${open}</div>
-            </div>
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-              <div class="text-[11px] font-bold text-slate-500 uppercase">Operational Status</div>
-              <div class="text-base font-bold text-purple-600 mt-1">Active Review</div>
-            </div>
-          </div>
-
-          <!-- Core Metrics Breakdown -->
-          <div class="grid grid-cols-2 gap-6">
-            <div class="p-5 border border-slate-200 rounded-xl bg-slate-50/50 space-y-2">
-              <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> St. Lucia Installations (MTTI)
-              </h3>
-              <div class="text-xs text-slate-700 space-y-1.5">
-                <div>Completed Installs: <strong class="text-slate-900">${mtti.totalCompleted}</strong></div>
-                <div>Average MTTI: <strong class="text-emerald-700 font-bold">${mtti.formattedAverageHours}</strong> (${mtti.formattedAverageDays})</div>
-                <div>Median MTTI: <strong class="text-slate-900">${mtti.formattedMedianHours}</strong></div>
-                <div>SLA Attainment (Target ≤${mtti.slaTargetHours}h): <strong class="text-emerald-700 font-bold">${mtti.slaPercentage.toFixed(1)}%</strong> (${mtti.slaMetCount} met / ${mtti.slaMissedCount} missed)</div>
-              </div>
-            </div>
-
-            <div class="p-5 border border-slate-200 rounded-xl bg-slate-50/50 space-y-2">
-              <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> St. Lucia Fault Repair External (MTTR)
-              </h3>
-              <div class="text-xs text-slate-700 space-y-1.5">
-                <div>Resolved Faults: <strong class="text-slate-900">${mttr.totalCompleted}</strong></div>
-                <div>Average MTTR: <strong class="text-amber-700 font-bold">${mttr.formattedAverageHours}</strong> (${mttr.formattedAverageDays})</div>
-                <div>Median MTTR: <strong class="text-slate-900">${mttr.formattedMedianHours}</strong></div>
-                <div>SLA Attainment (Target ≤${mttr.slaTargetHours}h): <strong class="text-amber-700 font-bold">${mttr.slaPercentage.toFixed(1)}%</strong> (${mttr.slaMetCount} met / ${mttr.slaMissedCount} missed)</div>
+              <div class="text-right" style="flex-shrink:0;">
+                <div class="eyebrow" style="color:#64748b; margin-bottom:2px;">Analysis Period</div>
+                <div class="font-mono" style="font-size:13px; font-weight:700; color:#fff; margin-bottom:10px;">${dateRangeStr}</div>
+                <div class="eyebrow" style="color:#64748b; margin-bottom:2px;">Generated</div>
+                <div class="font-mono" style="font-size:10px; color:#cbd5e1; margin-bottom:10px;">${nowStr}</div>
+                <div style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:#1e293b; border:1px solid #334155;">
+                  <span style="width:6px; height:6px; border-radius:50%; background:${useBusinessHours ? '#38bdf8' : '#34d399'};"></span>
+                  <span class="eyebrow" style="color:#e2e8f0;">${useBusinessHours ? 'Business Hours' : 'Calendar Hours'}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Completed Jobs Department Breakdown -->
-          <div class="p-5 border border-slate-200 rounded-xl bg-slate-50/50 space-y-3">
-            <h3 class="font-bold text-slate-900 text-xs flex items-center justify-between">
-              <span class="flex items-center gap-1.5 uppercase tracking-wide text-slate-600">
-                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                Completed Jobs Breakdown by Department
-              </span>
-              <span class="text-[10px] font-normal text-slate-500">Excludes Remote Migration tasks</span>
-            </h3>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              ${Object.entries(completedDepts).map(([dept, count]) => {
-                let subtext = 'Total completed status';
-                if (dept === 'St. Lucia Installations') {
-                  const total = count;
-                  const valid = mtti.totalCompleted;
-                  const diff = total - valid;
-                  subtext = `<span class="text-[9px] text-emerald-600 font-semibold block mt-0.5">${valid} used in MTTI</span>`;
-                  if (diff > 0) {
-                    subtext += `<span class="text-[8px] text-slate-400 block">${diff} missing dates/negative</span>`;
-                  }
-                } else if (dept === 'St. Lucia Fault Repair External') {
-                  const total = count;
-                  const valid = mttr.totalCompleted;
-                  const diff = total - valid;
-                  subtext = `<span class="text-[9px] text-amber-600 font-semibold block mt-0.5">${valid} used in MTTR</span>`;
-                  if (diff > 0) {
-                    subtext += `<span class="text-[8px] text-slate-400 block">${diff} missing dates/negative</span>`;
-                  }
-                } else if (dept === 'St. Lucia Fault Repair Internal') {
-                  subtext = `<span class="text-[9px] text-slate-500 font-semibold block mt-0.5">Separate Internal volume</span>`;
+          <div style="padding:26px 32px 30px;" class="space-y-7">
+
+            <!-- Executive Insights -->
+            <div class="rail" style="border-color:#64748b;">
+              <h3 class="eyebrow" style="color:#0f172a; margin-bottom:10px;">Executive Overview</h3>
+              <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+                ${generateExecutiveSummary(filteredJobs, useBusinessHours)
+                  .replace(/text-slate-200/g, 'text-slate-700')
+                  .replace(/text-white/g, 'text-slate-900')
+                  .replace(/bg-slate-800\/50/g, 'bg-transparent')
+                  .replace(/bg-slate-800/g, 'bg-slate-200')
+                  .replace(/border-slate-700\/50/g, 'border-slate-300')
+                  .replace(/text-slate-400/g, 'text-slate-600')
+                  .replace(/text-slate-300/g, 'text-slate-800')
+                  .replace(/text-emerald-400/g, 'text-emerald-700')
+                  .replace(/text-amber-400/g, 'text-amber-700')
+                  .replace(/text-blue-400/g, 'text-blue-700')
                 }
-                return `
-                  <div class="p-3 bg-white border border-slate-200 rounded-lg flex flex-col justify-between">
-                    <div>
-                      <div class="text-slate-500 font-semibold truncate" title="${dept}">${dept}</div>
-                      <div class="text-base font-black text-slate-900 mt-1">${count} <span class="text-[10px] font-normal text-slate-500">jobs</span></div>
-                    </div>
-                    <div class="border-t border-slate-100 mt-1.5 pt-1">
-                      ${subtext}
-                    </div>
-                  </div>
-                `;
-              }).join('')}
+              </div>
             </div>
-          </div>
 
-          <!-- Graphs / Charts Section -->
-          <div class="space-y-6 pt-2" style="page-break-before: always; break-before: page;">
-            <h3 class="text-base font-bold text-slate-900 border-b border-slate-200 pb-2">Operational Trend Visualizations & Graphs</h3>
-            ${mttiImgSection}
-            ${mttrImgSection}
-            ${openAgeImgSection}
-            ${deptImgSection}
-            ${rollingAvgImgSection}
-          </div>
+            <!-- Executive Summary Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" style="page-break-before: always; break-before: page;">
+              <div class="kpi-card" style="border-top-color:#64748b;">
+                <div class="eyebrow" style="color:#64748b;">Filtered Job Volume</div>
+                <div style="font-size:22px; font-weight:900; color:#0f172a; margin-top:4px;">${total}</div>
+              </div>
+              <div class="kpi-card" style="border-top-color:#059669;">
+                <div class="eyebrow" style="color:#059669;">Completed Jobs</div>
+                <div style="font-size:22px; font-weight:900; color:#0f172a; margin-top:4px;">${completed}</div>
+                <div class="font-mono" style="font-size:9px; color:#64748b; margin-top:4px; display:flex; flex-wrap:wrap; gap:5px;">
+                  <span>Installs ${mtti.totalCompleted}</span><span style="color:#cbd5e1;">&middot;</span>
+                  <span>Fault Ext ${mttr.totalCompleted}</span><span style="color:#cbd5e1;">&middot;</span>
+                  <span>Other ${completed - mtti.totalCompleted - mttr.totalCompleted}</span>
+                </div>
+              </div>
+              <div class="kpi-card" style="border-top-color:#d97706;">
+                <div class="eyebrow" style="color:#d97706;">Open Backlog</div>
+                <div style="font-size:22px; font-weight:900; color:#0f172a; margin-top:4px;">${open}</div>
+              </div>
+              <div class="kpi-card" style="border-top-color:${statusInfo.color}; background:${statusInfo.bg};">
+                <div class="eyebrow" style="color:${statusInfo.color};">Operational Status</div>
+                <div style="font-size:16px; font-weight:900; color:${statusInfo.color}; margin-top:4px;">${statusInfo.label}</div>
+                <div class="font-mono" style="font-size:9px; color:#64748b; margin-top:4px;">${formatNumber(combinedSLA, 1)}% combined SLA attainment</div>
+              </div>
+            </div>
 
-          <!-- Methodology & Calculation Guide -->
-          <div class="space-y-3 pt-4 border-t border-slate-200 text-xs text-slate-700 leading-relaxed" style="page-break-before: always; break-before: page;">
-            <h3 class="text-base font-bold text-slate-900">Data Calculation & Methodology Guide</h3>
-            <p>
-              This section outlines the exact formulas, metrics definitions, and calculation frameworks implemented across the V79 analytics engine:
-            </p>
-            <ul class="list-disc pl-5 space-y-2">
-              <li>
-                <strong>MTTI (Mean Time To Install):</strong> Computed for jobs within the <em>St. Lucia Installations</em> department. The duration is measured in hours from job creation timestamp (dateCreated) to completion timestamp (dateFinished). When Business Hours mode is selected, elapsed time strictly tallies working hours between 08:00 and 17:00 on weekdays, filtering out weekends and overnight hours.
-              </li>
-              <li>
-                <strong>MTTR (Mean Time To Repair):</strong> Computed for jobs within the <em>St. Lucia Fault Repair External</em> department. Measures elapsed restoration time from fault ticket creation to verified resolution.
-              </li>
-              <li>
-                <strong>SLA Attainment (%):</strong> Calculated as the proportion of completed jobs finished within the contractual target threshold (Installations ≤ 48h, Fault Repairs ≤ 48h) relative to total completed jobs: (SLA Met Count / Total Completed Jobs) * 100.
-              </li>
-              <li>
-                <strong>4-Week Moving Average (4W MA):</strong> A smoothing calculation applied to weekly MTTI and MTTR trend graphs. For any target week W, the moving average aggregates the mean performance of week W and the 3 preceding weeks, mitigating weekly volatility to reveal underlying performance velocity.
-              </li>
-              <li>
-                <strong>Open Jobs Backlog Age Distribution:</strong> Evaluates active open tickets against the current timestamp to group them into operational aging buckets (&lt;24h, 24-48h, 2-7d, 7-15d, 15-30d, &gt;30d), highlighting aging tickets requiring priority dispatch.
-              </li>
-              <li>
-                <strong>Department Volume Comparison:</strong> Aggregates total job volumes across all active business departments (Installations, Fault Repairs, Enterprise, etc.) to evaluate resource allocation and demand distribution.
-              </li>
-              <li>
-                <strong>Rolling 7-Day Turnaround Average:</strong> Computes the rolling 7-day mean resolution time for completed jobs, smoothing daily operational spikes to track short-term service delivery momentum.
-              </li>
-              <li>
-                <strong>Backlog & Aging Analysis:</strong> Open tickets are evaluated against the current reference date to determine ticket age in hours, categorized into operational risk brackets for supervisory follow-up.
-              </li>
-            </ul>
-          </div>
+            <!-- Core Metrics Breakdown -->
+            <div class="grid grid-cols-2 gap-6">
+              <div class="metric-card" style="border-top-color:#059669;">
+                <h3 style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:12px;">St. Lucia Installations &middot; MTTI</h3>
+                <div style="display:flex; align-items:center; gap:16px;">
+                  ${renderGaugeSVG(mtti.slaPercentage, '#059669')}
+                  <div style="font-size:11px; color:#334155; line-height:1.7;">
+                    <div>Completed Installs: <strong style="color:#0f172a;">${mtti.totalCompleted}</strong></div>
+                    <div>Average MTTI: <strong style="color:#047857;">${mtti.formattedAverageHours}</strong> (${mtti.formattedAverageDays})</div>
+                    <div>Median MTTI: <strong style="color:#0f172a;">${mtti.formattedMedianHours}</strong></div>
+                    <div>SLA Target: <strong style="color:#0f172a;">&le;${mtti.slaTargetHours}h</strong> &middot; ${mtti.slaMetCount} met / ${mtti.slaMissedCount} missed</div>
+                  </div>
+                </div>
+              </div>
 
-          <!-- Footer -->
-          <div class="border-t border-slate-200 pt-4 text-center text-[10px] text-slate-500">
-            Digicel St. Lucia Service Delivery Operations • Confidential Executive Report • Generated via D+ Analytics Platform
+              <div class="metric-card" style="border-top-color:#d97706;">
+                <h3 style="font-size:11px; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:12px;">St. Lucia Fault Repair External &middot; MTTR</h3>
+                <div style="display:flex; align-items:center; gap:16px;">
+                  ${renderGaugeSVG(mttr.slaPercentage, '#d97706')}
+                  <div style="font-size:11px; color:#334155; line-height:1.7;">
+                    <div>Resolved Faults: <strong style="color:#0f172a;">${mttr.totalCompleted}</strong></div>
+                    <div>Average MTTR: <strong style="color:#b45309;">${mttr.formattedAverageHours}</strong> (${mttr.formattedAverageDays})</div>
+                    <div>Median MTTR: <strong style="color:#0f172a;">${mttr.formattedMedianHours}</strong></div>
+                    <div>SLA Target: <strong style="color:#0f172a;">&le;${mttr.slaTargetHours}h</strong> &middot; ${mttr.slaMetCount} met / ${mttr.slaMissedCount} missed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Completed Jobs Department Breakdown -->
+            <div class="rail" style="border-color:#64748b;">
+              <div class="flex items-center justify-between" style="margin-bottom:12px;">
+                <h3 class="eyebrow" style="color:#0f172a;">Completed Jobs by Department</h3>
+                <span style="font-size:9px; color:#94a3b8;">Excludes Remote Migration tasks</span>
+              </div>
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                ${Object.entries(completedDepts).map(([dept, count]) => {
+                  let subtext = 'Total completed status';
+                  const dotColor = deptDotColor(dept);
+                  if (dept === 'St. Lucia Installations') {
+                    const diff = count - mtti.totalCompleted;
+                    subtext = `<span style="font-size:9px; color:#059669; font-weight:700; display:block; margin-top:2px;">${mtti.totalCompleted} used in MTTI</span>`;
+                    if (diff > 0) subtext += `<span style="font-size:8px; color:#94a3b8; display:block;">${diff} missing dates/negative</span>`;
+                  } else if (dept === 'St. Lucia Fault Repair External') {
+                    const diff = count - mttr.totalCompleted;
+                    subtext = `<span style="font-size:9px; color:#d97706; font-weight:700; display:block; margin-top:2px;">${mttr.totalCompleted} used in MTTR</span>`;
+                    if (diff > 0) subtext += `<span style="font-size:8px; color:#94a3b8; display:block;">${diff} missing dates/negative</span>`;
+                  } else if (dept === 'St. Lucia Fault Repair Internal') {
+                    subtext = `<span style="font-size:9px; color:#64748b; font-weight:700; display:block; margin-top:2px;">Separate internal volume</span>`;
+                  }
+                  return `
+                    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="width:7px; height:7px; border-radius:50%; background:${dotColor}; flex-shrink:0;"></span>
+                        <span style="font-size:10px; font-weight:600; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${dept}">${dept}</span>
+                      </div>
+                      <div style="font-size:17px; font-weight:900; color:#0f172a; margin-top:6px;">${count} <span style="font-size:9px; font-weight:400; color:#94a3b8;">jobs</span></div>
+                      <div style="border-top:1px solid #f1f5f9; margin-top:6px; padding-top:4px;">${subtext}</div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Graphs / Charts Section -->
+            <div style="page-break-before: always; break-before: page;">
+              <h3 class="eyebrow" style="color:#0f172a; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">Operational Trend Visualizations</h3>
+              ${mttiImgSection}
+              ${mttrImgSection}
+              ${openAgeImgSection}
+              ${deptImgSection}
+              ${rollingAvgImgSection}
+            </div>
+
+            <!-- Methodology & Calculation Guide -->
+            <div style="page-break-before: always; break-before: page;">
+              <h3 class="eyebrow" style="color:#0f172a; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:6px;">Data Calculation &amp; Methodology Guide</h3>
+              <p style="font-size:11px; color:#64748b; margin-bottom:14px;">Formulas and definitions used across the V79 analytics engine for this report.</p>
+              <div class="grid grid-cols-2 gap-x-6 gap-y-4">
+                <div class="def-card" style="border-color:#059669;">
+                  <div class="def-term" style="color:#059669;">MTTI &middot; Mean Time To Install</div>
+                  <div class="def-body">Computed for jobs in the St. Lucia Installations department. Duration is measured in hours from job creation to completion. Business Hours mode tallies only 08:00&ndash;17:00 on weekdays.</div>
+                </div>
+                <div class="def-card" style="border-color:#d97706;">
+                  <div class="def-term" style="color:#d97706;">MTTR &middot; Mean Time To Repair</div>
+                  <div class="def-body">Computed for jobs in the St. Lucia Fault Repair External department. Measures elapsed restoration time from fault ticket creation to verified resolution.</div>
+                </div>
+                <div class="def-card" style="border-color:#0f172a;">
+                  <div class="def-term" style="color:#0f172a;">SLA Attainment</div>
+                  <div class="def-body">Proportion of completed jobs finished within the ${mtti.slaTargetHours}h target threshold, relative to total completed jobs: (SLA Met Count &divide; Total Completed) &times; 100.</div>
+                </div>
+                <div class="def-card" style="border-color:#0284c7;">
+                  <div class="def-term" style="color:#0284c7;">4-Week Moving Average</div>
+                  <div class="def-body">Smoothing applied to weekly MTTI/MTTR trends. For week W, aggregates the mean of week W and the 3 preceding weeks to reveal underlying velocity.</div>
+                </div>
+                <div class="def-card" style="border-color:#e11d48;">
+                  <div class="def-term" style="color:#e11d48;">Backlog Age Distribution</div>
+                  <div class="def-body">Active open tickets grouped into aging buckets (&lt;24h, 24&ndash;48h, 2&ndash;7d, 7&ndash;15d, 15&ndash;30d, &gt;30d) to highlight tickets requiring priority dispatch.</div>
+                </div>
+                <div class="def-card" style="border-color:#64748b;">
+                  <div class="def-term" style="color:#64748b;">Department Volume Comparison</div>
+                  <div class="def-body">Aggregates total job volumes across active departments to evaluate resource allocation and demand distribution.</div>
+                </div>
+                <div class="def-card" style="border-color:#0284c7;">
+                  <div class="def-term" style="color:#0284c7;">Rolling 7-Day Turnaround</div>
+                  <div class="def-body">Rolling 7-day mean resolution time for completed jobs, smoothing daily spikes to track short-term delivery momentum.</div>
+                </div>
+                <div class="def-card" style="border-color:#94a3b8;">
+                  <div class="def-term" style="color:#64748b;">Backlog &amp; Aging Analysis</div>
+                  <div class="def-body">Open tickets evaluated against the current reference date to determine age in hours, categorized into risk brackets for supervisory follow-up.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align:center; padding-top:16px;">
+              <div style="height:3px; background:linear-gradient(90deg,#e11d48,#059669); border-radius:2px; margin-bottom:12px;"></div>
+              <div style="font-size:9px; color:#94a3b8;">Digicel St. Lucia Service Delivery Operations &middot; Confidential Executive Report &middot; Generated via D+ Analytics Platform</div>
+            </div>
+
           </div>
         </div>
       </div>

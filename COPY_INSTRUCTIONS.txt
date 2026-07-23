@@ -1,0 +1,34 @@
+KashDash — Executive PDF Report Redesign
+==========================================
+
+Copy this file into your repo, overwriting the existing one:
+
+  js/export.js  ->  KashDash/js/export.js
+
+What changed
+------------
+Only the printPDFReport() report design changed (the "Export PDF" button's
+preview/print/save output). No calculation logic was touched.
+
+- Cover/hero band: dark header strip with a gradient rail (rose -> emerald)
+  echoing the app's own logo mark, report title, and analysis
+  period/generated timestamp/calc-mode metadata.
+- Consistent color-coded "status rail" system used throughout: every
+  section and card carries a colored left or top border tied to its actual
+  meaning (emerald = Installations/on-target, amber = Fault Repair/watch,
+  rose = aging backlog/risk, slate = neutral/volume) — this mirrors the
+  dashboard's own SLA health color language rather than being decorative.
+- Inline SVG radial gauges for MTTI/MTTR SLA attainment, replacing bare
+  percentage text.
+- The "Operational Status" summary card is now computed from real combined
+  SLA attainment (On Target / Monitor / Action Required) instead of a
+  static "Active Review" label.
+- Department breakdown cards get a small color dot matching their rail
+  color for quick visual scanning.
+- Chart images now sit in bordered cards with a colored top rule and an
+  eyebrow label matching each chart's category.
+- The Methodology section is restructured from a bullet list into a
+  two-column definition grid (each metric gets its own labeled, color-rail
+  card) since it's a glossary, not a sequence.
+- All original data, calculations, and button wiring (Save PDF / Print /
+  Close) are unchanged.
