@@ -6,11 +6,14 @@ import { parseDate } from './utils.js';
 export class FilterController {
   constructor(onChangeCallback) {
     this.onChangeCallback = onChangeCallback;
+    const currentYear = new Date().getFullYear();
+    const todayStr = new Date().toISOString().substring(0, 10);
     this.state = {
-      startDate: '',
-      endDate: '',
+      startDate: `${currentYear}-04-01`,
+      endDate: todayStr,
       department: 'ALL',
       engineer: 'ALL',
+      contractor: 'ALL',
       status: 'ALL',
       region: 'ALL',
       technology: 'ALL',
@@ -29,6 +32,7 @@ export class FilterController {
 
     const departments = new Set();
     const engineers = new Set();
+    const contractors = new Set();
     const statuses = new Set();
     const regions = new Set();
     const technologies = new Set();
@@ -39,6 +43,7 @@ export class FilterController {
     jobs.forEach((j) => {
       if (j.department) departments.add(j.department);
       if (j.engineer && j.engineer !== 'Unassigned') engineers.add(j.engineer);
+      if (j.contractor && j.contractor !== 'Unassigned') contractors.add(j.contractor);
       if (j.status) statuses.add(j.status);
       if (j.region) regions.add(j.region);
       if (j.technology) technologies.add(j.technology);
@@ -49,6 +54,7 @@ export class FilterController {
 
     this.fillSelect('filter-department', Array.from(departments).sort());
     this.fillSelect('filter-engineer', Array.from(engineers).sort());
+    this.fillSelect('filter-contractor', Array.from(contractors).sort());
     this.fillSelect('filter-status', Array.from(statuses).sort());
     this.fillSelect('filter-region', Array.from(regions).sort());
     this.fillSelect('filter-technology', Array.from(technologies).sort());
@@ -84,11 +90,17 @@ export class FilterController {
    * Bind DOM inputs to filter state
    */
   bindEvents() {
+    const startEl = document.getElementById('filter-start-date');
+    const endEl = document.getElementById('filter-end-date');
+    if (startEl) startEl.value = this.state.startDate;
+    if (endEl) endEl.value = this.state.endDate;
+
     const fields = [
       { id: 'filter-start-date', key: 'startDate' },
       { id: 'filter-end-date', key: 'endDate' },
       { id: 'filter-department', key: 'department' },
       { id: 'filter-engineer', key: 'engineer' },
+      { id: 'filter-contractor', key: 'contractor' },
       { id: 'filter-status', key: 'status' },
       { id: 'filter-region', key: 'region' },
       { id: 'filter-technology', key: 'technology' },
@@ -157,11 +169,14 @@ export class FilterController {
   }
 
   reset() {
+    const currentYear = new Date().getFullYear();
+    const todayStr = new Date().toISOString().substring(0, 10);
     this.state = {
-      startDate: '',
-      endDate: '',
+      startDate: `${currentYear}-04-01`,
+      endDate: todayStr,
       department: 'ALL',
       engineer: 'ALL',
+      contractor: 'ALL',
       status: 'ALL',
       region: 'ALL',
       technology: 'ALL',
@@ -172,7 +187,7 @@ export class FilterController {
     };
 
     const ids = [
-      'filter-start-date', 'filter-end-date', 'filter-department', 'filter-engineer',
+      'filter-start-date', 'filter-end-date', 'filter-department', 'filter-engineer', 'filter-contractor',
       'filter-status', 'filter-region', 'filter-technology', 'filter-priority',
       'filter-customer-search', 'filter-category', 'filter-subcategory'
     ];
@@ -180,8 +195,15 @@ export class FilterController {
     ids.forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
-        if (el.tagName === 'SELECT') el.value = 'ALL';
-        else el.value = '';
+        if (el.tagName === 'SELECT') {
+          el.value = 'ALL';
+        } else if (id === 'filter-start-date') {
+          el.value = this.state.startDate;
+        } else if (id === 'filter-end-date') {
+          el.value = this.state.endDate;
+        } else {
+          el.value = '';
+        }
       }
     });
 
@@ -195,13 +217,24 @@ export class FilterController {
     if (!jobs || jobs.length === 0) return [];
 
     return jobs.filter((job) => {
-      // Date Range
-      if (this.state.startDate) {
-        const start = parseDate(this.state.startDate);
+      // Date Range - default to April 1st to present if not selected
+      let startDateStr = this.state.startDate;
+      let endDateStr = this.state.endDate;
+
+      if (!startDateStr) {
+        const currentYear = new Date().getFullYear();
+        startDateStr = `${currentYear}-04-01`;
+      }
+      if (!endDateStr) {
+        endDateStr = new Date().toISOString().substring(0, 10);
+      }
+
+      if (startDateStr) {
+        const start = parseDate(startDateStr);
         if (start && job.dateCreated && job.dateCreated < start) return false;
       }
-      if (this.state.endDate) {
-        const end = parseDate(this.state.endDate);
+      if (endDateStr) {
+        const end = parseDate(endDateStr);
         if (end) {
           end.setHours(23, 59, 59, 999);
           if (job.dateCreated && job.dateCreated > end) return false;
@@ -215,6 +248,11 @@ export class FilterController {
 
       // Engineer
       if (this.state.engineer !== 'ALL' && job.engineer !== this.state.engineer) {
+        return false;
+      }
+
+      // Contractor
+      if (this.state.contractor !== 'ALL' && job.contractor !== this.state.contractor) {
         return false;
       }
 

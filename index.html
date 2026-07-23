@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V79 KPI Dashboard - Digicel St. Lucia Service Delivery</title>
+  <title>D+ KPI Dashboard - Digicel St. Lucia Service Delivery</title>
   
   <!-- CSS Stylesheets -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,6 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-[#0a0b0e] text-[#e2e8f0] antialiased selection:bg-sky-500 selection:text-white font-sans">
 
@@ -27,11 +28,11 @@
     <header class="glass-panel p-4 md:p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border border-slate-800">
       <div class="flex items-center gap-4">
         <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-600 to-emerald-600 flex items-center justify-center font-black text-2xl text-white shadow-lg tracking-wider">
-          V79
+          D+
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-xl md:text-2xl font-black tracking-tight text-white">V79 KPI Dashboard</h1>
+            <h1 class="text-xl md:text-2xl font-black tracking-tight text-white">D+ KPI Dashboard</h1>
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-950 text-rose-300 border border-rose-800/60 uppercase">
               Digicel St. Lucia
             </span>
@@ -42,10 +43,7 @@
 
       <!-- Quick Action Controls -->
       <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto tv-hide">
-        <button id="btn-load-sample" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm">
-          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Reload April Sample
-        </button>
+
 
         <button id="btn-open-validation" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm">
           <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -154,7 +152,7 @@
       </div>
 
       <!-- Filter Controls Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-2.5">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-2.5">
         <div>
           <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Start Date</label>
           <input type="date" id="filter-start-date" class="filter-input w-full" />
@@ -173,6 +171,12 @@
           <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Engineer</label>
           <select id="filter-engineer" class="filter-select w-full">
             <option value="ALL">All Engineers</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Contractor</label>
+          <select id="filter-contractor" class="filter-select w-full">
+            <option value="ALL">All Contractors</option>
           </select>
         </div>
         <div>
@@ -320,7 +324,13 @@
           <h3 class="text-sm font-bold text-white flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Weekly MTTI Trend (St. Lucia Installations)
           </h3>
-          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-weekly-mtti', 'Weekly_MTTI_Trend.png')">PNG</button>
+          <div class="flex items-center gap-2">
+            <label class="text-[11px] text-slate-300 flex items-center gap-1 cursor-pointer bg-slate-900 px-2 py-1 rounded border border-slate-700">
+              <input type="checkbox" id="toggle-mtti-ma" class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0 w-3.5 h-3.5" />
+              4W MA
+            </label>
+            <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-weekly-mtti', 'Weekly_MTTI_Trend.png')">PNG</button>
+          </div>
         </div>
         <div class="chart-card-container">
           <canvas id="chart-weekly-mtti"></canvas>
@@ -333,7 +343,13 @@
           <h3 class="text-sm font-bold text-white flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-amber-400"></span> Weekly MTTR Trend (St. Lucia Fault Repair External)
           </h3>
-          <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-weekly-mttr', 'Weekly_MTTR_Trend.png')">PNG</button>
+          <div class="flex items-center gap-2">
+            <label class="text-[11px] text-slate-300 flex items-center gap-1 cursor-pointer bg-slate-900 px-2 py-1 rounded border border-slate-700">
+              <input type="checkbox" id="toggle-mttr-ma" class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0 w-3.5 h-3.5" />
+              4W MA
+            </label>
+            <button class="text-[11px] text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded" onclick="window.v79App && window.exportEngine.downloadChartPNG('chart-weekly-mttr', 'Weekly_MTTR_Trend.png')">PNG</button>
+          </div>
         </div>
         <div class="chart-card-container">
           <canvas id="chart-weekly-mttr"></canvas>
@@ -538,7 +554,7 @@
 
     <!-- Footer -->
     <footer class="text-center text-xs text-slate-500 py-4 border-t border-slate-900 tv-hide">
-      V79 KPI Dashboard &bull; Digicel St. Lucia Service Delivery Operations &bull; Engine version 1.0.0
+      D+ KPI Dashboard &bull; Digicel St. Lucia Service Delivery Operations &bull; Engine version 1.0.0
     </footer>
 
   </div>

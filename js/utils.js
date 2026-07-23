@@ -197,37 +197,32 @@ export function formatDays(hours) {
 export function getISOWeekString(date) {
   const d = parseDate(date);
   if (!d) return 'Unknown Week';
-
-  const target = new Date(d.valueOf());
-  const dayNumber = (d.getDay() + 6) % 7;
-  target.setDate(target.getDate() - dayNumber + 3);
-  const firstThursday = target.valueOf();
-  target.setMonth(0, 1);
-  if (target.getDay() !== 4) {
-    target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+  let year = d.getFullYear();
+  if (d.getMonth() < 3) {
+    year = year - 1;
   }
-  const weekNumber = 1 + Math.round((firstThursday - target.valueOf()) / 604800000);
-  const year = d.getFullYear();
-  return `W${String(weekNumber).padStart(2, '0')} (${year})`;
+  const aprilFirst = new Date(year, 3, 1);
+  const diffTime = d.getTime() - aprilFirst.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const weekNumber = Math.max(1, Math.floor(diffDays / 7) + 1);
+  const finYear = year + 1;
+  return `W${String(weekNumber).padStart(2, '0')} (FY${String(finYear).slice(-2)})`;
 }
 
 /**
- * Get ISO week key for sorting (e.g., "2023-W15")
+ * Get ISO week key for sorting (e.g., "2026-W01") where Week 1 starts on April 1st
  */
 export function getISOWeekKey(date) {
   const d = parseDate(date);
   if (!d) return '9999-W99';
-
-  const target = new Date(d.valueOf());
-  const dayNumber = (d.getDay() + 6) % 7;
-  target.setDate(target.getDate() - dayNumber + 3);
-  const firstThursday = target.valueOf();
-  target.setMonth(0, 1);
-  if (target.getDay() !== 4) {
-    target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+  let year = d.getFullYear();
+  if (d.getMonth() < 3) {
+    year = year - 1;
   }
-  const weekNumber = 1 + Math.round((firstThursday - target.valueOf()) / 604800000);
-  const year = target.getFullYear();
+  const aprilFirst = new Date(year, 3, 1);
+  const diffTime = d.getTime() - aprilFirst.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const weekNumber = Math.max(1, Math.floor(diffDays / 7) + 1);
   return `${year}-W${String(weekNumber).padStart(2, '0')}`;
 }
 

@@ -49,12 +49,15 @@
 }
 
 .kpi-value {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 800;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   color: var(--text-primary);
   line-height: 1.1;
   margin-top: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kpi-subtext {

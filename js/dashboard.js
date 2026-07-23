@@ -39,6 +39,21 @@ export class DashboardManager {
       });
     }
 
+    // 4W Moving Average Toggles for Weekly MTTI and MTTR Trend charts
+    const mttiMaToggle = document.getElementById('toggle-mtti-ma');
+    if (mttiMaToggle) {
+      mttiMaToggle.addEventListener('change', () => {
+        chartManager.renderWeeklyMTTITrend(this.filteredJobs, this.useBusinessHours);
+      });
+    }
+
+    const mttrMaToggle = document.getElementById('toggle-mttr-ma');
+    if (mttrMaToggle) {
+      mttrMaToggle.addEventListener('change', () => {
+        chartManager.renderWeeklyMTTRTrend(this.filteredJobs, this.useBusinessHours);
+      });
+    }
+
     // Validation Report Drawer Toggle
     const valReportBtn = document.getElementById('btn-open-validation');
     if (valReportBtn) {
@@ -114,12 +129,15 @@ export class DashboardManager {
     const completed = jobs.filter((j) => j.isCompleted).length;
     const created = jobs.filter((j) => j.status === 'Created').length;
     const confirmed = jobs.filter((j) => j.status === 'Confirmed').length;
-    const openJobs = jobs.filter((j) => j.isOpen);
+    const openJobs = jobs.filter((j) => j.isOpen && (
+      j.department.toLowerCase().includes('install') ||
+      (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+    ));
     const openCount = openJobs.length;
 
     // MTTI & MTTR
     const mtti = calculateMTTI(jobs, 48, this.useBusinessHours);
-    const mttr = calculateMTTR(jobs, 24, this.useBusinessHours);
+    const mttr = calculateMTTR(jobs, 48, this.useBusinessHours);
 
     // Open Age Mean
     const openAges = openJobs.map((j) => j.openAgeHours || 0);
@@ -129,8 +147,7 @@ export class DashboardManager {
     const allCompletedWithDates = jobs.filter((j) => j.isCompleted && j.dateCreated && j.dateFinished && !j.isNegativeDuration);
     let metSLA = 0;
     allCompletedWithDates.forEach((j) => {
-      const isInstall = j.department.toLowerCase().includes('install');
-      const target = isInstall ? 48 : 24;
+      const target = 48;
       const dur = this.useBusinessHours ? j.businessHours : j.durationHours;
       if (dur <= target) metSLA++;
     });
@@ -160,8 +177,8 @@ export class DashboardManager {
     const slaBar = document.getElementById('kpi-sla-bar');
     if (slaBar) {
       slaBar.style.width = `${Math.min(100, Math.max(0, overallSLA))}%`;
-      if (overallSLA >= 80) slaBar.className = 'h-2 rounded-full bg-emerald-500 transition-all duration-500';
-      else if (overallSLA >= 60) slaBar.className = 'h-2 rounded-full bg-amber-500 transition-all duration-500';
+      if (overallSLA >= 95) slaBar.className = 'h-2 rounded-full bg-emerald-500 transition-all duration-500';
+      else if (overallSLA >= 85) slaBar.className = 'h-2 rounded-full bg-amber-500 transition-all duration-500';
       else slaBar.className = 'h-2 rounded-full bg-rose-500 transition-all duration-500';
     }
   }
@@ -258,12 +275,15 @@ export class DashboardManager {
         const dur = this.useBusinessHours ? j.businessHours : j.durationHours;
         if (j.department.toLowerCase().includes('install')) {
           weekMap[weekKey].installDurations.push(dur);
-        } else {
+        } else if (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external')) {
           weekMap[weekKey].faultDurations.push(dur);
         }
       }
 
-      if (j.isOpen) {
+      if (j.isOpen && (
+        j.department.toLowerCase().includes('install') ||
+        (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+      )) {
         weekMap[weekKey].openAges.push(j.openAgeHours || 0);
       }
     });
@@ -347,7 +367,10 @@ export class DashboardManager {
         engMap[j.engineer].durations.push(this.useBusinessHours ? j.businessHours : j.durationHours);
       }
 
-      if (j.isOpen) {
+      if (j.isOpen && (
+        j.department.toLowerCase().includes('install') ||
+        (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+      )) {
         engMap[j.engineer].open++;
         const age = j.openAgeHours || 0;
         if (age > engMap[j.engineer].oldestOpenAge) {
@@ -478,15 +501,30 @@ export class DashboardManager {
     } else if (filterType === 'CONFIRMED') {
       matchingJobs = this.filteredJobs.filter((j) => j.status === 'Confirmed');
     } else if (filterType === 'OPEN') {
-      matchingJobs = this.filteredJobs.filter((j) => j.isOpen);
+      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (
+        j.department.toLowerCase().includes('install') ||
+        (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+      ));
     } else if (filterType === 'OVER24H') {
-      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (j.openAgeHours || 0) > 24);
+      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (j.openAgeHours || 0) > 24 && (
+        j.department.toLowerCase().includes('install') ||
+        (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+      ));
     } else if (filterType === 'OVER48H') {
-      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (j.openAgeHours || 0) > 48);
+      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (j.openAgeHours || 0) > 48 && (
+        j.department.toLowerCase().includes('install') ||
+        (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+      ));
     } else if (filterType === 'OVER7D') {
-      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (j.openAgeHours || 0) > 168);
+      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (j.openAgeHours || 0) > 168 && (
+        j.department.toLowerCase().includes('install') ||
+        (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+      ));
     } else if (filterType === 'OVER30D') {
-      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (j.openAgeHours || 0) > 720);
+      matchingJobs = this.filteredJobs.filter((j) => j.isOpen && (j.openAgeHours || 0) > 720 && (
+        j.department.toLowerCase().includes('install') ||
+        (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+      ));
     } else if (filterType.startsWith('STATUS:')) {
       const st = filterType.replace('STATUS:', '');
       matchingJobs = this.filteredJobs.filter((j) => j.status === st);

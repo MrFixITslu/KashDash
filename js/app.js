@@ -90,7 +90,7 @@ class App {
     const exportPdfBtn = document.getElementById('btn-export-pdf');
     if (exportPdfBtn) {
       exportPdfBtn.addEventListener('click', () => {
-        exportEngine.printPDFReport();
+        exportEngine.printPDFReport(dashboardManager.filteredJobs, dashboardManager.useBusinessHours);
       });
     }
 

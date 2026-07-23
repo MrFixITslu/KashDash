@@ -73,6 +73,87 @@ class ChartManager {
       return;
     }
 
+    if (!window.Chart.valueLabelPluginRegistered) {
+      const valueLabelPlugin = {
+        id: 'valueLabelPlugin',
+        afterDraw(chart) {
+          const pluginOpts = chart.config.options.plugins?.valueLabelPlugin;
+          if (pluginOpts && pluginOpts.display === false) return;
+
+          const { ctx } = chart;
+          ctx.save();
+
+          chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = chart.getDatasetMeta(datasetIndex);
+            if (meta.hidden) return;
+
+            const isHorizontal = chart.options.indexAxis === 'y';
+            const isDoughnut = chart.config.type === 'doughnut' || chart.config.type === 'pie';
+
+            if (isDoughnut) return;
+
+            meta.data.forEach((element, index) => {
+              const val = dataset.data[index];
+              if (val === null || val === undefined) return;
+
+              let displayVal = val;
+              if (typeof val === 'number') {
+                if (dataset.label && dataset.label.includes('%')) {
+                  displayVal = val.toFixed(1) + '%';
+                } else if (val % 1 !== 0) {
+                  displayVal = val.toFixed(1);
+                } else {
+                  displayVal = val.toString();
+                }
+              }
+
+              const isDark = document.body.classList.contains('light-theme') === false;
+              ctx.font = 'bold 9px Inter, system-ui, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+
+              const position = element.tooltipPosition();
+              let x = position.x;
+              let y = position.y;
+
+              if (chart.config.type === 'bar') {
+                if (isHorizontal) {
+                  ctx.textAlign = 'left';
+                  x += 5;
+                } else {
+                  ctx.textBaseline = 'bottom';
+                  y -= 5;
+                }
+              } else if (chart.config.type === 'line') {
+                ctx.textBaseline = 'bottom';
+                y -= 6;
+              }
+
+              // Draw high contrast background label pill for readability
+              const textWidth = ctx.measureText(displayVal).width;
+              ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.75)' : 'rgba(255, 255, 255, 0.85)';
+              
+              if (ctx.roundRect) {
+                ctx.beginPath();
+                ctx.roundRect(x - textWidth / 2 - 4, y - 6, textWidth + 8, 12, 3);
+                ctx.fill();
+              } else {
+                ctx.fillRect(x - textWidth / 2 - 4, y - 6, textWidth + 8, 12);
+              }
+
+              ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
+              ctx.fillText(displayVal, x, y);
+            });
+          });
+
+          ctx.restore();
+        }
+      };
+
+      window.Chart.register(valueLabelPlugin);
+      window.Chart.valueLabelPluginRegistered = true;
+    }
+
     this.renderWeeklyMTTITrend(jobs, useBusinessHours);
     this.renderWeeklyMTTRTrend(jobs, useBusinessHours);
     this.renderCompletedVsCreated(jobs);
@@ -112,6 +193,56 @@ class ChartManager {
     const labels = sortedWeekKeys.map((k) => weekMap[k].label);
     const data = sortedWeekKeys.map((k) => calculateMean(weekMap[k].durations));
 
+    const mttiMaToggle = document.getElementById('toggle-mtti-ma');
+    const showMttiMA = mttiMaToggle ? mttiMaToggle.checked : false;
+
+    const datasets = [
+      {
+        label: 'Avg MTTI (Hours)',
+        data,
+        borderColor: '#10b981', // Green
+        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: '#10b981'
+      }
+    ];
+
+    if (showMttiMA) {
+      const maData = data.map((val, idx, arr) => {
+        const start = Math.max(0, idx - 3);
+        const slice = arr.slice(start, idx + 1);
+        return calculateMean(slice);
+      });
+      datasets.push({
+        label: '4-Week Moving Avg (MTTI)',
+        data: maData,
+        borderColor: '#38bdf8', // Light blue
+        borderDash: [5, 5],
+        borderWidth: 2,
+        fill: false,
+        tension: 0.3,
+        pointRadius: 2
+      });
+    }
+
+    // Add KPI Target Line (48 hours)
+    if (labels.length > 0) {
+      datasets.push({
+        label: 'KPI Target (48 hrs)',
+        data: Array(labels.length).fill(48),
+        borderColor: '#ef4444',
+        borderWidth: 2,
+        borderDash: [6, 6],
+        fill: false,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0
+      });
+    }
+
     const ctx = canvas.getContext('2d');
     const options = this.getCommonOptions('Weekly MTTI Average (Hours)');
 
@@ -119,19 +250,7 @@ class ChartManager {
       type: 'line',
       data: {
         labels,
-        datasets: [
-          {
-            label: 'Avg MTTI (Hours)',
-            data,
-            borderColor: '#10b981', // Green
-            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 4,
-            pointBackgroundColor: '#10b981'
-          }
-        ]
+        datasets
       },
       options
     });
@@ -146,7 +265,7 @@ class ChartManager {
     if (!canvas) return;
 
     const faultJobs = jobs.filter(
-      (j) => (j.department.toLowerCase().includes('fault repair') || j.department.toLowerCase().includes('fault')) && j.isCompleted && j.dateCreated && j.dateFinished && !j.isNegativeDuration
+      (j) => j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external') && j.isCompleted && j.dateCreated && j.dateFinished && !j.isNegativeDuration
     );
 
     const weekMap = {};
@@ -163,6 +282,56 @@ class ChartManager {
     const labels = sortedWeekKeys.map((k) => weekMap[k].label);
     const data = sortedWeekKeys.map((k) => calculateMean(weekMap[k].durations));
 
+    const mttrMaToggle = document.getElementById('toggle-mttr-ma');
+    const showMttrMA = mttrMaToggle ? mttrMaToggle.checked : false;
+
+    const datasets = [
+      {
+        label: 'Avg MTTR (Hours)',
+        data,
+        borderColor: '#f59e0b', // Amber
+        backgroundColor: 'rgba(245, 158, 11, 0.15)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: '#f59e0b'
+      }
+    ];
+
+    if (showMttrMA) {
+      const maData = data.map((val, idx, arr) => {
+        const start = Math.max(0, idx - 3);
+        const slice = arr.slice(start, idx + 1);
+        return calculateMean(slice);
+      });
+      datasets.push({
+        label: '4-Week Moving Avg (MTTR)',
+        data: maData,
+        borderColor: '#ec4899', // Pink
+        borderDash: [5, 5],
+        borderWidth: 2,
+        fill: false,
+        tension: 0.3,
+        pointRadius: 2
+      });
+    }
+
+    // Add KPI Target Line (48 hours)
+    if (labels.length > 0) {
+      datasets.push({
+        label: 'KPI Target (48 hrs)',
+        data: Array(labels.length).fill(48),
+        borderColor: '#ef4444',
+        borderWidth: 2,
+        borderDash: [6, 6],
+        fill: false,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0
+      });
+    }
+
     const ctx = canvas.getContext('2d');
     const options = this.getCommonOptions('Weekly MTTR Average (Hours)');
 
@@ -170,19 +339,7 @@ class ChartManager {
       type: 'line',
       data: {
         labels,
-        datasets: [
-          {
-            label: 'Avg MTTR (Hours)',
-            data,
-            borderColor: '#f59e0b', // Amber
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 4,
-            pointBackgroundColor: '#f59e0b'
-          }
-        ]
+        datasets
       },
       options
     });
@@ -252,7 +409,10 @@ class ChartManager {
     const canvas = document.getElementById('chart-open-age');
     if (!canvas) return;
 
-    const openJobs = jobs.filter((j) => j.isOpen);
+    const openJobs = jobs.filter((j) => j.isOpen && (
+      j.department.toLowerCase().includes('install') ||
+      (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
+    ));
 
     let under24 = 0;
     let between24And48 = 0;
@@ -526,6 +686,10 @@ class ChartManager {
 
     const ctx = canvas.getContext('2d');
     const options = this.getCommonOptions('Rolling Turnaround Time (Hours)');
+    options.plugins = {
+      ...options.plugins,
+      valueLabelPlugin: { display: false }
+    };
 
     this.charts.rollingAverage = new window.Chart(ctx, {
       type: 'line',
@@ -594,8 +758,20 @@ class ChartManager {
           {
             label: 'SLA Attainment %',
             data: slaPercentages,
-            backgroundColor: slaPercentages.map((p) => (p >= 80 ? '#10b981' : p >= 60 ? '#f59e0b' : '#ef4444')),
+            backgroundColor: slaPercentages.map((p) => (p >= 95 ? '#10b981' : p >= 85 ? '#f59e0b' : '#ef4444')),
             borderRadius: 6
+          },
+          {
+            label: 'SLA Target (95%)',
+            type: 'line',
+            data: Array(labels.length).fill(95),
+            borderColor: '#ef4444',
+            borderWidth: 2,
+            borderDash: [6, 6],
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            tension: 0
           }
         ]
       },

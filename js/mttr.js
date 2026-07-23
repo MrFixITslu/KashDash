@@ -9,18 +9,18 @@ import { calculateMean, calculateMedian, formatHours, formatDays } from './utils
 export function getFaultRepairJobs(jobs) {
   if (!jobs) return [];
   return jobs.filter(
-    (j) => j.department && (j.department.toLowerCase().includes('fault repair') || j.department.toLowerCase().includes('fault'))
+    (j) => j.department && j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external')
   );
 }
 
 /**
  * Calculate MTTR statistics for completed fault repair external jobs
  * @param {Array<Object>} jobs - Array of cleaned job objects
- * @param {number} [slaTargetHours=24] - SLA threshold in hours (default 24 hours for fault repair)
+ * @param {number} [slaTargetHours=48] - SLA threshold in hours (default 48 hours for fault repair)
  * @param {boolean} [useBusinessHours=false] - Whether to use business hours vs calendar hours
  * @returns {Object} MTTR Metrics
  */
-export function calculateMTTR(jobs, slaTargetHours = 24, useBusinessHours = false) {
+export function calculateMTTR(jobs, slaTargetHours = 48, useBusinessHours = false) {
   const faultJobs = getFaultRepairJobs(jobs);
   const completedJobs = faultJobs.filter((j) => j.isCompleted && j.dateCreated && j.dateFinished && !j.isNegativeDuration);
 

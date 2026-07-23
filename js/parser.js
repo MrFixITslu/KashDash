@@ -63,7 +63,13 @@ const HEADER_MAPPING = {
   'sub category': 'subCategory',
   'subcategory': 'subCategory',
   'failurereason': 'subCategory',
-  'failure_reason': 'subCategory'
+  'failure_reason': 'subCategory',
+
+  // Contractor
+  'contractor': 'contractor',
+  'contractorname': 'contractor',
+  'contractor_name': 'contractor',
+  'subcontractor': 'contractor'
 };
 
 /**
@@ -76,6 +82,7 @@ function mapRawRow(rawRow) {
     department: 'Unspecified',
     status: 'Unknown',
     engineer: 'Unassigned',
+    contractor: 'Unassigned',
     customer: 'Unknown Customer',
     technology: 'Standard',
     dateCreated: null,
@@ -108,6 +115,7 @@ function mapRawRow(rawRow) {
       else if (mappedField === 'department' && cleanVal) job.department = String(cleanVal);
       else if (mappedField === 'status' && cleanVal) job.status = String(cleanVal);
       else if (mappedField === 'engineer' && cleanVal) job.engineer = String(cleanVal);
+      else if (mappedField === 'contractor' && cleanVal) job.contractor = String(cleanVal);
       else if (mappedField === 'customer' && cleanVal) job.customer = String(cleanVal);
       else if (mappedField === 'technology' && cleanVal) job.technology = String(cleanVal);
       else if (mappedField === 'dateCreated' && cleanVal) job.dateCreated = parseDate(cleanVal);
@@ -125,6 +133,7 @@ function mapRawRow(rawRow) {
   if (!job.department && rawRow['DepartmentName']) job.department = String(rawRow['DepartmentName']).trim();
   if (!job.status && rawRow['JobStatusFull']) job.status = String(rawRow['JobStatusFull']).trim();
   if ((!job.engineer || job.engineer === 'Unassigned') && rawRow['Engineers']) job.engineer = String(rawRow['Engineers']).trim();
+  if ((!job.contractor || job.contractor === 'Unassigned') && rawRow['Contractor']) job.contractor = String(rawRow['Contractor']).trim();
   if ((!job.customer || job.customer === 'Unknown Customer') && rawRow['CustomerName']) job.customer = String(rawRow['CustomerName']).trim();
   if ((!job.region || job.region === 'St. Lucia') && rawRow['City']) job.region = String(rawRow['City']).trim();
   if (!job.technology || job.technology === 'Standard') {
@@ -175,6 +184,22 @@ export function parseAndCleanData(rawRows, referenceDate = new Date()) {
     // Skip blank rows where essential fields are missing
     if (!job.jobNumber && !job.customer && !job.dateCreated) {
       report.blankRowsIgnoredCount++;
+      continue;
+    }
+
+    // Exclude RemoteMigration StLucia and St. Lucia Fault Repair Internal from dashboard and all formulas
+    const techLower = (job.technology || '').toLowerCase();
+    const rawStr = JSON.stringify(job.raw || {}).toLowerCase();
+    const initialDeptLower = (job.department || '').toLowerCase();
+    if (
+      techLower.includes('remote migration') ||
+      techLower.includes('carcip migration') ||
+      techLower.includes('remotemigration') ||
+      rawStr.includes('remote migration') ||
+      rawStr.includes('carcip migration') ||
+      rawStr.includes('remotemigration') ||
+      (initialDeptLower.includes('fault') && initialDeptLower.includes('internal'))
+    ) {
       continue;
     }
 
