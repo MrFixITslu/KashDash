@@ -22,7 +22,7 @@ export function getFaultRepairJobs(jobs) {
  */
 export function calculateMTTR(jobs, slaTargetHours = 48, useBusinessHours = false) {
   const faultJobs = getFaultRepairJobs(jobs);
-  const completedJobs = faultJobs.filter((j) => j.isCompleted && j.dateCreated && j.dateFinished && !j.isNegativeDuration);
+  const completedJobs = faultJobs.filter((j) => j.isCompleted && j.dateCreated && j.dateFinished && !j.isNegativeDuration && j.status !== 'Manager Hold');
 
   if (completedJobs.length === 0) {
     return {

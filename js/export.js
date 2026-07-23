@@ -5,6 +5,8 @@ import { formatDate, formatHours, formatDays, formatNumber, parseDate } from './
 import { calculateMTTI } from './mtti.js';
 import { calculateMTTR } from './mttr.js';
 import html2pdf from 'html2pdf.js';
+import { chartManager } from './charts.js';
+import { generateExecutiveSummary } from './reports.js';
 
 export class ExportEngine {
   /**
@@ -69,8 +71,8 @@ export class ExportEngine {
     const wb = XLSX.utils.book_new();
 
     // 1. KPI Summary Sheet
-    const mtti = calculateMTTI(jobs);
-    const mttr = calculateMTTR(jobs);
+    const mtti = calculateMTTI(jobs, 48);
+    const mttr = calculateMTTR(jobs, 48);
     const completed = jobs.filter((j) => j.isCompleted).length;
     const openJobs = jobs.filter((j) => j.isOpen && (
       j.department.toLowerCase().includes('install') ||
@@ -152,7 +154,7 @@ export class ExportEngine {
   /**
    * Print PDF report / open print preview modal with executive graphs and calculation methodology
    */
-  printPDFReport(filteredJobs = [], useBusinessHours = false) {
+  async printPDFReport(filteredJobs = [], useBusinessHours = false) {
     const total = filteredJobs.length;
     const completed = filteredJobs.filter(j => j.isCompleted).length;
     const open = filteredJobs.filter(j => j.isOpen && (
@@ -207,8 +209,8 @@ export class ExportEngine {
       completedDepts[d] = (completedDepts[d] || 0) + 1;
     });
 
-    // Helper to add solid dark background to transparent chart canvas
-    const getCanvasDataURLWithBackground = (canvas, backgroundColor = '#0f172a') => {
+    // Helper to add solid light background to transparent chart canvas
+    const getCanvasDataURLWithBackground = (canvas, backgroundColor = '#ffffff') => {
       if (!canvas) return '';
       try {
         const tempCanvas = document.createElement('canvas');
@@ -216,7 +218,7 @@ export class ExportEngine {
         tempCanvas.height = canvas.height;
         const tempCtx = tempCanvas.getContext('2d');
         
-        // Fill solid dark background
+        // Fill solid light background
         tempCtx.fillStyle = backgroundColor;
         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
         
@@ -230,21 +232,55 @@ export class ExportEngine {
       }
     };
 
+    // Temporarily switch chart colors for white PDF report
+    const isDark = !document.body.classList.contains('light-theme');
+    if (isDark && typeof chartManager !== 'undefined') {
+      Object.values(chartManager.charts).forEach(chart => {
+        if (chart) {
+          if (chart.options?.plugins?.title) chart.options.plugins.title.color = '#0f172a';
+          if (chart.options?.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = '#475569';
+          if (chart.options?.scales?.x?.ticks) chart.options.scales.x.ticks.color = '#475569';
+          if (chart.options?.scales?.y?.ticks) chart.options.scales.y.ticks.color = '#475569';
+          if (chart.options?.scales?.x?.grid) chart.options.scales.x.grid.color = '#e2e8f0';
+          if (chart.options?.scales?.y?.grid) chart.options.scales.y.grid.color = '#e2e8f0';
+          chart.update('none'); // synchronous update without animation
+        }
+      });
+      // Wait for chart rendering to complete
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+
     // Grab chart images if available
     const mttiCanvas = document.getElementById('chart-weekly-mtti');
-    const mttiImg = getCanvasDataURLWithBackground(mttiCanvas);
+    const mttiImg = getCanvasDataURLWithBackground(mttiCanvas, '#ffffff');
 
     const mttrCanvas = document.getElementById('chart-weekly-mttr');
-    const mttrImg = getCanvasDataURLWithBackground(mttrCanvas);
+    const mttrImg = getCanvasDataURLWithBackground(mttrCanvas, '#ffffff');
 
     const openAgeCanvas = document.getElementById('chart-open-age');
-    const openAgeImg = getCanvasDataURLWithBackground(openAgeCanvas);
+    const openAgeImg = getCanvasDataURLWithBackground(openAgeCanvas, '#ffffff');
 
     const deptCanvas = document.getElementById('chart-department');
-    const deptImg = getCanvasDataURLWithBackground(deptCanvas);
+    const deptImg = getCanvasDataURLWithBackground(deptCanvas, '#ffffff');
 
     const rollingAvgCanvas = document.getElementById('chart-rolling-average');
-    const rollingAvgImg = getCanvasDataURLWithBackground(rollingAvgCanvas);
+    const rollingAvgImg = getCanvasDataURLWithBackground(rollingAvgCanvas, '#ffffff');
+
+    // Restore original chart colors
+    if (isDark && typeof chartManager !== 'undefined') {
+      Object.values(chartManager.charts).forEach(chart => {
+        if (chart) {
+          if (chart.options?.plugins?.title) chart.options.plugins.title.color = '#f8fafc';
+          if (chart.options?.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = '#94a3b8';
+          if (chart.options?.scales?.x?.ticks) chart.options.scales.x.ticks.color = '#94a3b8';
+          if (chart.options?.scales?.y?.ticks) chart.options.scales.y.ticks.color = '#94a3b8';
+          if (chart.options?.scales?.x?.grid) chart.options.scales.x.grid.color = 'rgba(255, 255, 255, 0.08)';
+          if (chart.options?.scales?.y?.grid) chart.options.scales.y.grid.color = 'rgba(255, 255, 255, 0.08)';
+          chart.update('none');
+        }
+      });
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
 
     const nowStr = new Date().toLocaleString();
 
@@ -255,40 +291,40 @@ export class ExportEngine {
       document.body.appendChild(printContainer);
     }
 
-    printContainer.className = 'fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center p-4 overflow-y-auto';
+    printContainer.className = 'fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center p-4 overflow-y-auto';
 
     let mttiImgSection = mttiImg ? `
-      <div class="space-y-2">
+      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
         <h4 class="text-xs font-bold text-slate-700 uppercase">Weekly MTTI Trend (St. Lucia Installations)</h4>
-        <img src="${mttiImg}" class="w-full max-h-64 object-contain border border-slate-800 rounded-lg p-2 bg-[#0f172a]" />
+        <img src="${mttiImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
       </div>
     ` : '';
 
     let mttrImgSection = mttrImg ? `
-      <div class="space-y-2">
+      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
         <h4 class="text-xs font-bold text-slate-700 uppercase">Weekly MTTR Trend (St. Lucia Fault Repair External)</h4>
-        <img src="${mttrImg}" class="w-full max-h-64 object-contain border border-slate-800 rounded-lg p-2 bg-[#0f172a]" />
+        <img src="${mttrImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
       </div>
     ` : '';
 
     let openAgeImgSection = openAgeImg ? `
-      <div class="space-y-2">
+      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
         <h4 class="text-xs font-bold text-slate-700 uppercase">Open Jobs Backlog Age Distribution</h4>
-        <img src="${openAgeImg}" class="w-full max-h-64 object-contain border border-slate-800 rounded-lg p-2 bg-[#0f172a]" />
+        <img src="${openAgeImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
       </div>
     ` : '';
 
     let deptImgSection = deptImg ? `
-      <div class="space-y-2">
+      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
         <h4 class="text-xs font-bold text-slate-700 uppercase">Department Volume Comparison</h4>
-        <img src="${deptImg}" class="w-full max-h-64 object-contain border border-slate-800 rounded-lg p-2 bg-[#0f172a]" />
+        <img src="${deptImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
       </div>
     ` : '';
 
     let rollingAvgImgSection = rollingAvgImg ? `
-      <div class="space-y-2">
+      <div class="space-y-2 mt-4" style="page-break-inside: avoid; break-inside: avoid;">
         <h4 class="text-xs font-bold text-slate-700 uppercase">Rolling 7-Day Turnaround Average</h4>
-        <img src="${rollingAvgImg}" class="w-full max-h-64 object-contain border border-slate-800 rounded-lg p-2 bg-[#0f172a]" />
+        <img src="${rollingAvgImg}" class="w-[80%] h-auto border border-black rounded-sm mx-auto" />
       </div>
     ` : '';
 
@@ -316,7 +352,7 @@ export class ExportEngine {
         </div>
 
         <!-- Report Content Body -->
-        <div class="p-8 overflow-y-auto space-y-6 bg-white">
+        <div id="pdf-report-body" class="p-8 overflow-y-auto space-y-6 bg-white text-slate-900">
           <!-- Header -->
           <div class="border-b border-slate-300 pb-4 flex justify-between items-start">
             <div>
@@ -330,22 +366,45 @@ export class ExportEngine {
             </div>
           </div>
 
+          <!-- Executive Insights -->
+          <div class="mb-4">
+            <h3 class="font-bold text-slate-900 text-sm mb-2">Executive Overview</h3>
+            <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+              ${generateExecutiveSummary(filteredJobs, useBusinessHours)
+                .replace(/text-slate-200/g, 'text-slate-700')
+                .replace(/text-white/g, 'text-slate-900')
+                .replace(/bg-slate-800\/50/g, 'bg-transparent')
+                .replace(/bg-slate-800/g, 'bg-slate-200')
+                .replace(/border-slate-700\/50/g, 'border-slate-300')
+                .replace(/text-slate-400/g, 'text-slate-600')
+                .replace(/text-slate-300/g, 'text-slate-800')
+                .replace(/text-emerald-400/g, 'text-emerald-700')
+                .replace(/text-amber-400/g, 'text-amber-700')
+                .replace(/text-blue-400/g, 'text-blue-700')
+              }
+            </div>
+          </div>
+
           <!-- Executive Summary Cards -->
-          <div class="grid grid-cols-4 gap-4">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" style="page-break-before: always; break-before: page;">
             <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
               <div class="text-[11px] font-bold text-slate-500 uppercase">Filtered Job Volume</div>
-              <div class="text-2xl font-black text-slate-900 mt-1">${total}</div>
+              <div class="text-xl font-black text-slate-900 mt-1">${total}</div>
             </div>
             <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
               <div class="text-[11px] font-bold text-slate-500 uppercase">Completed Jobs</div>
-              <div class="text-2xl font-black text-emerald-600 mt-1">${completed}</div>
-              <div class="text-[9px] text-slate-500 mt-1 leading-normal">
-                Installs: ${mtti.totalCompleted} | Fault Ext: ${mttr.totalCompleted} | Others: ${completed - mtti.totalCompleted - mttr.totalCompleted}
+              <div class="text-xl font-black text-emerald-600 mt-1">${completed}</div>
+              <div class="text-[9px] text-slate-500 mt-1 leading-normal flex flex-wrap gap-1">
+                <span class="whitespace-nowrap">Installs: ${mtti.totalCompleted}</span>
+                <span class="text-slate-300">|</span>
+                <span class="whitespace-nowrap">Fault Ext: ${mttr.totalCompleted}</span>
+                <span class="text-slate-300">|</span>
+                <span class="whitespace-nowrap">Others: ${completed - mtti.totalCompleted - mttr.totalCompleted}</span>
               </div>
             </div>
             <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
               <div class="text-[11px] font-bold text-slate-500 uppercase">Open Backlog</div>
-              <div class="text-2xl font-black text-blue-600 mt-1">${open}</div>
+              <div class="text-xl font-black text-blue-600 mt-1">${open}</div>
             </div>
             <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
               <div class="text-[11px] font-bold text-slate-500 uppercase">Operational Status</div>
@@ -389,7 +448,7 @@ export class ExportEngine {
               </span>
               <span class="text-[10px] font-normal text-slate-500">Excludes Remote Migration tasks</span>
             </h3>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
               ${Object.entries(completedDepts).map(([dept, count]) => {
                 let subtext = 'Total completed status';
                 if (dept === 'St. Lucia Installations') {
@@ -415,7 +474,7 @@ export class ExportEngine {
                   <div class="p-3 bg-white border border-slate-200 rounded-lg flex flex-col justify-between">
                     <div>
                       <div class="text-slate-500 font-semibold truncate" title="${dept}">${dept}</div>
-                      <div class="text-lg font-black text-slate-900 mt-1">${count} <span class="text-[10px] font-normal text-slate-500">jobs</span></div>
+                      <div class="text-base font-black text-slate-900 mt-1">${count} <span class="text-[10px] font-normal text-slate-500">jobs</span></div>
                     </div>
                     <div class="border-t border-slate-100 mt-1.5 pt-1">
                       ${subtext}
@@ -427,7 +486,7 @@ export class ExportEngine {
           </div>
 
           <!-- Graphs / Charts Section -->
-          <div class="space-y-6 pt-2">
+          <div class="space-y-6 pt-2" style="page-break-before: always; break-before: page;">
             <h3 class="text-base font-bold text-slate-900 border-b border-slate-200 pb-2">Operational Trend Visualizations & Graphs</h3>
             ${mttiImgSection}
             ${mttrImgSection}
@@ -437,7 +496,7 @@ export class ExportEngine {
           </div>
 
           <!-- Methodology & Calculation Guide -->
-          <div class="space-y-3 pt-4 border-t border-slate-200 text-xs text-slate-700 leading-relaxed page-break-before">
+          <div class="space-y-3 pt-4 border-t border-slate-200 text-xs text-slate-700 leading-relaxed" style="page-break-before: always; break-before: page;">
             <h3 class="text-base font-bold text-slate-900">Data Calculation & Methodology Guide</h3>
             <p>
               This section outlines the exact formulas, metrics definitions, and calculation frameworks implemented across the V79 analytics engine:
@@ -456,7 +515,7 @@ export class ExportEngine {
                 <strong>4-Week Moving Average (4W MA):</strong> A smoothing calculation applied to weekly MTTI and MTTR trend graphs. For any target week W, the moving average aggregates the mean performance of week W and the 3 preceding weeks, mitigating weekly volatility to reveal underlying performance velocity.
               </li>
               <li>
-                <strong>Open Jobs Backlog Age Distribution:</strong> Evaluates active open tickets against the current timestamp to group them into operational aging buckets (&lt;24h, 24-48h, 2-7d, &gt;7d), highlighting aging tickets requiring priority dispatch.
+                <strong>Open Jobs Backlog Age Distribution:</strong> Evaluates active open tickets against the current timestamp to group them into operational aging buckets (&lt;24h, 24-48h, 2-7d, 7-15d, 15-30d, &gt;30d), highlighting aging tickets requiring priority dispatch.
               </li>
               <li>
                 <strong>Department Volume Comparison:</strong> Aggregates total job volumes across all active business departments (Installations, Fault Repairs, Enterprise, etc.) to evaluate resource allocation and demand distribution.
@@ -483,18 +542,38 @@ export class ExportEngine {
     });
 
     document.getElementById('btn-modal-save-pdf').addEventListener('click', () => {
-      const element = printContainer.querySelector('.bg-white.text-slate-900');
+      const element = printContainer.querySelector('#pdf-report-body');
+      const wrapper = printContainer.querySelector('.max-h-\\[90vh\\]');
+      
+      // Expand element and wrapper to prevent html2canvas cropping
+      element.classList.remove('overflow-y-auto');
+      element.style.overflow = 'visible';
+      element.style.height = 'auto';
+      
+      if (wrapper) {
+        wrapper.classList.remove('max-h-[90vh]', 'overflow-hidden');
+        wrapper.style.maxHeight = 'none';
+        wrapper.style.overflow = 'visible';
+      }
+      
+      printContainer.classList.remove('overflow-y-auto', 'fixed', 'inset-0');
+      printContainer.style.position = 'absolute';
+      printContainer.style.top = '0';
+      printContainer.style.left = '0';
+      printContainer.style.width = '100%';
+      printContainer.style.height = 'auto';
+      printContainer.style.overflow = 'visible';
 
       // Helper to convert OKLCH color strings to RGB format to prevent html2canvas crash on Tailwind v4 styles
       const oklchToRgb = (oklchStr) => {
         try {
           let clean = oklchStr.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
-          const match = clean.match(/oklch\(\s*([0-9.]+%?)\s+([0-9.]+)\s+([0-9.]+)(?:\s*(?:\/|alpha)?\s*([0-9.]+%?))?\s*\)/i);
+          const match = clean.match(/oklch\(\s*([0-9.]+%?)\s+([0-9.]+%?)\s+([0-9.]+%?)(?:\s*(?:\/|alpha)?\s*([0-9.]+%?))?\s*\)/i);
           if (!match) return null;
 
           let L = match[1].endsWith('%') ? parseFloat(match[1]) / 100 : parseFloat(match[1]);
-          let C = parseFloat(match[2]);
-          let H = parseFloat(match[3]);
+          let C = match[2].endsWith('%') ? parseFloat(match[2]) / 100 * 0.4 : parseFloat(match[2]);
+          let H = match[3].endsWith('%') ? parseFloat(match[3]) / 100 * 360 : parseFloat(match[3]);
           let alpha = match[4] ? (match[4].endsWith('%') ? parseFloat(match[4]) / 100 : parseFloat(match[4])) : 1;
 
           const hRad = (H * Math.PI) / 180;
@@ -529,12 +608,59 @@ export class ExportEngine {
         }
       };
 
-      const replaceOklch = (str) => {
-        if (!str || typeof str !== 'string' || !str.includes('oklch')) return str;
-        return str.replace(/oklch\([^)]+\)/gi, (match) => {
-          const rgb = oklchToRgb(match);
-          return rgb || match;
-        });
+      const oklabToRgb = (oklabStr) => {
+        try {
+          let clean = oklabStr.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+          const match = clean.match(/oklab\(\s*([\-0-9.]+%?)\s+([\-0-9.]+%?)\s+([\-0-9.]+%?)(?:\s*(?:\/|alpha)?\s*([0-9.]+%?))?\s*\)/i);
+          if (!match) return null;
+
+          let L = match[1].endsWith('%') ? parseFloat(match[1]) / 100 : parseFloat(match[1]);
+          let lab_a = match[2].endsWith('%') ? parseFloat(match[2]) / 100 * 0.4 : parseFloat(match[2]);
+          let lab_b = match[3].endsWith('%') ? parseFloat(match[3]) / 100 * 0.4 : parseFloat(match[3]);
+          let alpha = match[4] ? (match[4].endsWith('%') ? parseFloat(match[4]) / 100 : parseFloat(match[4])) : 1;
+
+          const l_ = L + 0.3963377774 * lab_a + 0.2158037573 * lab_b;
+          const m_ = L - 0.1055613458 * lab_a - 0.0638541728 * lab_b;
+          const s_ = L - 0.0894841775 * lab_a - 1.2914855480 * lab_b;
+
+          const l = l_ * l_ * l_;
+          const m = m_ * m_ * m_;
+          const s = s_ * s_ * s_;
+
+          let rLine = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+          let gLine = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+          let bLine = -0.0041960863 * l - 0.7034186145 * m + 1.7076147010 * s;
+
+          rLine = Math.max(0, Math.min(1, rLine));
+          gLine = Math.max(0, Math.min(1, gLine));
+          bLine = Math.max(0, Math.min(1, bLine));
+
+          const gamma = (x) => (x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055);
+
+          const r = Math.round(gamma(rLine) * 255);
+          const g = Math.round(gamma(gLine) * 255);
+          const b = Math.round(gamma(bLine) * 255);
+
+          return alpha === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        } catch (e) {
+          return null;
+        }
+      };
+
+      const replaceModernColors = (str) => {
+        if (!str || typeof str !== 'string') return str;
+        let res = str;
+        if (res.includes('oklch')) {
+          res = res.replace(/oklch\([^)]+\)/gi, (match) => oklchToRgb(match) || match);
+        }
+        if (res.includes('oklab')) {
+          res = res.replace(/oklab\([^)]+\)/gi, (match) => oklabToRgb(match) || match);
+        }
+        if (res.includes('color(display-p3')) {
+          // Simplistic fallback for display-p3
+          res = res.replace(/color\(display-p3[^)]+\)/gi, 'rgb(128, 128, 128)');
+        }
+        return res;
       };
 
       // Monkeypatch window.getComputedStyle
@@ -546,12 +672,15 @@ export class ExportEngine {
             if (prop === 'getPropertyValue') {
               return function(propertyName) {
                 const val = target.getPropertyValue(propertyName);
-                return replaceOklch(val);
+                return replaceModernColors(val);
               };
             }
             const val = target[prop];
+            if (typeof val === 'function') {
+              return val.bind(target);
+            }
             if (typeof val === 'string') {
-              return replaceOklch(val);
+              return replaceModernColors(val);
             }
             return val;
           }
@@ -573,8 +702,8 @@ export class ExportEngine {
           if (sheet.cssRules) {
             Array.from(sheet.cssRules).forEach(rule => {
               let text = rule.cssText;
-              if (text.includes('oklch')) {
-                text = replaceOklch(text);
+              if (text.includes('oklch') || text.includes('oklab')) {
+                text = replaceModernColors(text);
               }
               safeCss += text + '\n';
             });
@@ -595,6 +724,25 @@ export class ExportEngine {
       });
 
       const restoreStyles = () => {
+        if (element) {
+          element.classList.add('overflow-y-auto');
+          element.style.overflow = '';
+          element.style.height = '';
+        }
+        if (wrapper) {
+          wrapper.classList.add('max-h-[90vh]', 'overflow-hidden');
+          wrapper.style.maxHeight = '';
+          wrapper.style.overflow = '';
+        }
+        
+        printContainer.classList.add('overflow-y-auto', 'fixed', 'inset-0');
+        printContainer.style.position = '';
+        printContainer.style.top = '';
+        printContainer.style.left = '';
+        printContainer.style.width = '';
+        printContainer.style.height = '';
+        printContainer.style.overflow = '';
+        
         const safeStyles = document.getElementById('html2pdf-safe-styles');
         if (safeStyles) safeStyles.remove();
 
@@ -608,11 +756,12 @@ export class ExportEngine {
       };
 
       const opt = {
-        margin: 10,
+        margin: [10, 10, 15, 10],
         filename: 'D_Plus_Executive_KPI_Report.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        html2canvas: { scale: 4, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
       };
 
       const html2pdfLib = window.html2pdf || html2pdf;

@@ -22,7 +22,7 @@ export function getInstallationJobs(jobs) {
  */
 export function calculateMTTI(jobs, slaTargetHours = 48, useBusinessHours = false) {
   const installJobs = getInstallationJobs(jobs);
-  const completedJobs = installJobs.filter((j) => j.isCompleted && j.dateCreated && j.dateFinished && !j.isNegativeDuration);
+  const completedJobs = installJobs.filter((j) => j.isCompleted && j.dateCreated && j.dateFinished && !j.isNegativeDuration && j.status !== 'Manager Hold');
 
   if (completedJobs.length === 0) {
     return {

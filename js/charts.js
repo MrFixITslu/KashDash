@@ -417,7 +417,8 @@ class ChartManager {
     let under24 = 0;
     let between24And48 = 0;
     let between24And7Days = 0;
-    let over7Days = 0;
+    let between7And15Days = 0;
+    let between15And30Days = 0;
     let over30Days = 0;
 
     openJobs.forEach((j) => {
@@ -425,7 +426,8 @@ class ChartManager {
       if (hrs <= 24) under24++;
       else if (hrs <= 48) between24And48++;
       else if (hrs <= 168) between24And7Days++;
-      else if (hrs <= 720) over7Days++;
+      else if (hrs <= 360) between7And15Days++;
+      else if (hrs <= 720) between15And30Days++;
       else over30Days++;
     });
 
@@ -435,12 +437,12 @@ class ChartManager {
     this.charts.openAge = new window.Chart(ctx, {
       type: 'bar',
       data: {
-        labels: ['<24 Hours', '24-48 Hours', '2-7 Days', '7-30 Days', '>30 Days'],
+        labels: ['<24 Hours', '24-48 Hours', '2-7 Days', '7-15 Days', '15-30 Days', '>30 Days'],
         datasets: [
           {
             label: 'Open Jobs Count',
-            data: [under24, between24And48, between24And7Days, over7Days, over30Days],
-            backgroundColor: ['#10b981', '#06b6d4', '#f59e0b', '#f97316', '#ef4444'],
+            data: [under24, between24And48, between24And7Days, between7And15Days, between15And30Days, over30Days],
+            backgroundColor: ['#10b981', '#06b6d4', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'],
             borderRadius: 6
           }
         ]
@@ -732,8 +734,7 @@ class ChartManager {
       }
       regionMap[j.region].total++;
 
-      const isInstall = j.department.toLowerCase().includes('install');
-      const targetSLA = isInstall ? 48 : 24;
+      const targetSLA = 48;
       const dur = useBusinessHours ? j.businessHours : j.durationHours;
 
       if (dur <= targetSLA) {

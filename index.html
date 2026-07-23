@@ -198,9 +198,9 @@
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Priority</label>
-          <select id="filter-priority" class="filter-select w-full">
-            <option value="ALL">All Priorities</option>
+          <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Created Month</label>
+          <select id="filter-month" class="filter-select w-full">
+            <option value="ALL">All Months</option>
           </select>
         </div>
         <div>
@@ -461,12 +461,16 @@
       </div>
     </section>
 
-    <!-- Week-on-Week KPI Table -->
+    <!-- Trend KPI Table -->
     <section class="glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 space-y-4">
-      <div class="flex justify-between items-center">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h3 class="text-base font-bold text-white">Week-on-Week KPI Breakdown</h3>
-          <p class="text-xs text-slate-400 mt-0.5">Weekly comparison of Created Jobs, Completed Jobs, MTTI, MTTR, Open Backlog Age, and WoW Output Improvement %</p>
+          <h3 class="text-base font-bold text-white" id="trend-table-title">Week-on-Week KPI Breakdown</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Historical comparison of Created Jobs, Completed Jobs, MTTI, MTTR, Open Backlog Age, and Output Improvement %</p>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-900 rounded-lg p-1 border border-slate-800">
+          <button id="btn-trend-weekly" class="px-3 py-1 text-sm rounded bg-emerald-600 text-white font-medium transition-colors">Weekly</button>
+          <button id="btn-trend-monthly" class="px-3 py-1 text-sm rounded bg-transparent text-slate-400 hover:text-white transition-colors">Monthly</button>
         </div>
       </div>
 
@@ -474,20 +478,64 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Week Number</th>
+              <th id="trend-table-period-header">Week Number</th>
               <th class="text-right">Jobs Created</th>
               <th class="text-right">Jobs Completed</th>
               <th class="text-right">Avg MTTI (Hours)</th>
               <th class="text-right">Avg MTTR (Hours)</th>
               <th class="text-right">Avg Open Age</th>
               <th class="text-right">Backlog Count</th>
-              <th class="text-right">WoW Output Change %</th>
+              <th class="text-right" id="trend-table-change-header">WoW Output Change %</th>
             </tr>
           </thead>
           <tbody id="week-on-week-tbody">
             <!-- Populated via JavaScript -->
           </tbody>
+          <tfoot id="week-on-week-tfoot" class="bg-slate-800/80 font-bold border-t border-slate-700">
+            <!-- Totals Populated via JavaScript -->
+          </tfoot>
         </table>
+      </div>
+    </section>
+
+    <!-- Manager Hold Tickets Section -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="manager-hold-section">
+      <!-- Manager Hold Ticket List (col-span-2) -->
+      <div class="lg:col-span-2 glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+            Active Manager Hold Tickets
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Currently open tickets placed on Manager Hold, excluded from MTTI & MTTR calculations.</p>
+        </div>
+        <div class="data-table-wrapper max-h-[350px] overflow-y-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Job Number</th>
+                <th>Department</th>
+                <th>Region</th>
+                <th class="text-right">KPI (Hold Age)</th>
+                <th>Onhold Reason</th>
+              </tr>
+            </thead>
+            <tbody id="manager-hold-tbody">
+              <!-- Populated via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Breakdown of Reasons (col-span-1) -->
+      <div class="glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 space-y-4 flex flex-col justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white">Breakdown of Onhold Reasons</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Distribution and counts of specified hold reasons</p>
+        </div>
+        <div class="space-y-3 flex-1 overflow-y-auto max-h-[280px] mt-2 pr-1" id="onhold-reasons-breakdown">
+          <!-- Populated via JavaScript -->
+        </div>
       </div>
     </section>
 

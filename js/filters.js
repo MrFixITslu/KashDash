@@ -17,7 +17,7 @@ export class FilterController {
       status: 'ALL',
       region: 'ALL',
       technology: 'ALL',
-      priority: 'ALL',
+      createdMonth: 'ALL',
       customerSearch: '',
       category: 'ALL',
       subCategory: 'ALL'
@@ -36,7 +36,7 @@ export class FilterController {
     const statuses = new Set();
     const regions = new Set();
     const technologies = new Set();
-    const priorities = new Set();
+    const createdMonths = new Set();
     const categories = new Set();
     const subCategories = new Set();
 
@@ -47,9 +47,23 @@ export class FilterController {
       if (j.status) statuses.add(j.status);
       if (j.region) regions.add(j.region);
       if (j.technology) technologies.add(j.technology);
-      if (j.priority) priorities.add(j.priority);
+      
+      if (j.dateCreated) {
+        const d = parseDate(j.dateCreated);
+        if (d) {
+          const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          createdMonths.add(mStr);
+        }
+      }
+
       if (j.category) categories.add(j.category);
       if (j.subCategory) subCategories.add(j.subCategory);
+    });
+
+    const createdMonthsObjs = Array.from(createdMonths).sort().reverse().map(m => {
+      const [y, mm] = m.split('-');
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return { value: m, label: `${monthNames[parseInt(mm, 10) - 1]} ${y}` };
     });
 
     this.fillSelect('filter-department', Array.from(departments).sort());
@@ -58,7 +72,7 @@ export class FilterController {
     this.fillSelect('filter-status', Array.from(statuses).sort());
     this.fillSelect('filter-region', Array.from(regions).sort());
     this.fillSelect('filter-technology', Array.from(technologies).sort());
-    this.fillSelect('filter-priority', Array.from(priorities).sort());
+    this.fillSelect('filter-month', createdMonthsObjs);
     this.fillSelect('filter-category', Array.from(categories).sort());
     this.fillSelect('filter-subcategory', Array.from(subCategories).sort());
   }
@@ -74,8 +88,8 @@ export class FilterController {
     items.forEach((item) => {
       if (!item) return;
       const opt = document.createElement('option');
-      opt.value = item;
-      opt.textContent = item;
+      opt.value = item.value || item;
+      opt.textContent = item.label || item;
       el.appendChild(opt);
     });
 
@@ -104,7 +118,7 @@ export class FilterController {
       { id: 'filter-status', key: 'status' },
       { id: 'filter-region', key: 'region' },
       { id: 'filter-technology', key: 'technology' },
-      { id: 'filter-priority', key: 'priority' },
+      { id: 'filter-month', key: 'createdMonth' },
       { id: 'filter-customer-search', key: 'customerSearch', event: 'input' },
       { id: 'filter-category', key: 'category' },
       { id: 'filter-subcategory', key: 'subCategory' }
@@ -180,7 +194,7 @@ export class FilterController {
       status: 'ALL',
       region: 'ALL',
       technology: 'ALL',
-      priority: 'ALL',
+      createdMonth: 'ALL',
       customerSearch: '',
       category: 'ALL',
       subCategory: 'ALL'
@@ -188,7 +202,7 @@ export class FilterController {
 
     const ids = [
       'filter-start-date', 'filter-end-date', 'filter-department', 'filter-engineer', 'filter-contractor',
-      'filter-status', 'filter-region', 'filter-technology', 'filter-priority',
+      'filter-status', 'filter-region', 'filter-technology', 'filter-month',
       'filter-customer-search', 'filter-category', 'filter-subcategory'
     ];
 
@@ -273,9 +287,13 @@ export class FilterController {
         return false;
       }
 
-      // Priority
-      if (this.state.priority !== 'ALL' && job.priority !== this.state.priority) {
-        return false;
+      // Created Month
+      if (this.state.createdMonth !== 'ALL') {
+        if (!job.dateCreated) return false;
+        const d = parseDate(job.dateCreated);
+        if (!d) return false;
+        const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (mStr !== this.state.createdMonth) return false;
       }
 
       // Category

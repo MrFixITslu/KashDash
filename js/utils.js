@@ -227,6 +227,25 @@ export function getISOWeekKey(date) {
 }
 
 /**
+ * Generate a sortable Month string (YYYY-MM) based on calendar year
+ */
+export function getMonthKey(date) {
+  const d = parseDate(date);
+  if (!d) return '9999-99';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Generate a readable Month label (e.g. "Jan 2024")
+ */
+export function getMonthString(date) {
+  const d = parseDate(date);
+  if (!d) return 'Unknown Month';
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/**
  * Percentage difference calculation
  */
 export function calculatePercentageChange(oldVal, newVal) {

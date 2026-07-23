@@ -1,7 +1,7 @@
 /**
  * Primary Dashboard Renderer & Layout Manager
  */
-import { formatNumber, formatHours, formatDays, formatDate, getISOWeekKey, getISOWeekString, calculateMean, calculatePercentageChange, escapeHTML } from './utils.js';
+import { formatNumber, formatHours, formatDays, formatDate, getISOWeekKey, getISOWeekString, getMonthKey, getMonthString, calculateMean, calculatePercentageChange, escapeHTML } from './utils.js';
 import { calculateMTTI } from './mtti.js';
 import { calculateMTTR } from './mttr.js';
 import { generateExecutiveSummary, renderValidationReport } from './reports.js';
@@ -16,6 +16,7 @@ export class DashboardManager {
     this.activeDepartmentTab = 'ALL';
     this.activeDrillDownFilter = null;
     this.listenersBound = false;
+    this.trendPeriod = 'weekly'; // 'weekly' or 'monthly'
   }
 
   init(parsedData) {
@@ -103,6 +104,24 @@ export class DashboardManager {
         this.filterDrillDownTable(modalSearch.value.trim().toLowerCase());
       });
     }
+
+    // Trend table toggle
+    const btnWeekly = document.getElementById('btn-trend-weekly');
+    const btnMonthly = document.getElementById('btn-trend-monthly');
+    if (btnWeekly && btnMonthly) {
+      btnWeekly.addEventListener('click', () => {
+        this.trendPeriod = 'weekly';
+        btnWeekly.className = 'px-3 py-1 text-sm rounded bg-emerald-600 text-white font-medium transition-colors';
+        btnMonthly.className = 'px-3 py-1 text-sm rounded bg-transparent text-slate-400 hover:text-white transition-colors';
+        this.renderTrendTable();
+      });
+      btnMonthly.addEventListener('click', () => {
+        this.trendPeriod = 'monthly';
+        btnMonthly.className = 'px-3 py-1 text-sm rounded bg-emerald-600 text-white font-medium transition-colors';
+        btnWeekly.className = 'px-3 py-1 text-sm rounded bg-transparent text-slate-400 hover:text-white transition-colors';
+        this.renderTrendTable();
+      });
+    }
   }
 
   /**
@@ -113,7 +132,8 @@ export class DashboardManager {
 
     this.renderKPICards();
     this.renderStatusBreakdown();
-    this.renderWeekOnWeekTable();
+    this.renderTrendTable();
+    this.renderManagerHoldSection();
     this.renderEngineerLeaderboard();
     this.renderExtremeJobs();
     this.renderExecutiveSummary();
@@ -238,26 +258,37 @@ export class DashboardManager {
   }
 
   /**
-   * Render Week-on-Week KPI Comparison Table
+   * Render Trend KPI Comparison Table (Weekly or Monthly)
    */
-  renderWeekOnWeekTable() {
+  renderTrendTable() {
     const tbody = document.getElementById('week-on-week-tbody');
+    const tfoot = document.getElementById('week-on-week-tfoot');
+    const periodHeader = document.getElementById('trend-table-period-header');
+    const changeHeader = document.getElementById('trend-table-change-header');
+    const title = document.getElementById('trend-table-title');
+    
     if (!tbody) return;
 
-    // Group jobs by ISO Week
-    const weekMap = {};
+    const isMonthly = this.trendPeriod === 'monthly';
+    
+    if (periodHeader) periodHeader.textContent = isMonthly ? 'Month' : 'Week Number';
+    if (changeHeader) changeHeader.textContent = isMonthly ? 'MoM Output Change %' : 'WoW Output Change %';
+    if (title) title.textContent = isMonthly ? 'Month-on-Month KPI Breakdown' : 'Week-on-Week KPI Breakdown';
+
+    // Group jobs by Period (Week or Month)
+    const periodMap = {};
 
     this.filteredJobs.forEach((j) => {
       const dateToUse = j.dateFinished || j.dateCreated;
       if (!dateToUse) return;
 
-      const weekKey = getISOWeekKey(dateToUse);
-      const weekLabel = getISOWeekString(dateToUse);
+      const periodKey = isMonthly ? getMonthKey(dateToUse) : getISOWeekKey(dateToUse);
+      const periodLabel = isMonthly ? getMonthString(dateToUse) : getISOWeekString(dateToUse);
 
-      if (!weekMap[weekKey]) {
-        weekMap[weekKey] = {
-          weekKey,
-          label: weekLabel,
+      if (!periodMap[periodKey]) {
+        periodMap[periodKey] = {
+          periodKey,
+          label: periodLabel,
           created: 0,
           completed: 0,
           installDurations: [],
@@ -266,17 +297,17 @@ export class DashboardManager {
         };
       }
 
-      if (j.dateCreated && getISOWeekKey(j.dateCreated) === weekKey) {
-        weekMap[weekKey].created++;
+      if (j.dateCreated && (isMonthly ? getMonthKey(j.dateCreated) : getISOWeekKey(j.dateCreated)) === periodKey) {
+        periodMap[periodKey].created++;
       }
 
-      if (j.isCompleted && j.dateFinished && getISOWeekKey(j.dateFinished) === weekKey && !j.isNegativeDuration) {
-        weekMap[weekKey].completed++;
+      if (j.isCompleted && j.dateFinished && (isMonthly ? getMonthKey(j.dateFinished) : getISOWeekKey(j.dateFinished)) === periodKey && !j.isNegativeDuration) {
+        periodMap[periodKey].completed++;
         const dur = this.useBusinessHours ? j.businessHours : j.durationHours;
         if (j.department.toLowerCase().includes('install')) {
-          weekMap[weekKey].installDurations.push(dur);
+          periodMap[periodKey].installDurations.push(dur);
         } else if (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external')) {
-          weekMap[weekKey].faultDurations.push(dur);
+          periodMap[periodKey].faultDurations.push(dur);
         }
       }
 
@@ -284,32 +315,50 @@ export class DashboardManager {
         j.department.toLowerCase().includes('install') ||
         (j.department.toLowerCase().includes('fault') && j.department.toLowerCase().includes('external'))
       )) {
-        weekMap[weekKey].openAges.push(j.openAgeHours || 0);
+        periodMap[periodKey].openAges.push(j.openAgeHours || 0);
       }
     });
 
-    const sortedWeekKeys = Object.keys(weekMap).sort();
-    if (sortedWeekKeys.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">No weekly trend data available.</td></tr>`;
+    const sortedPeriodKeys = Object.keys(periodMap).sort();
+    if (sortedPeriodKeys.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">No trend data available.</td></tr>`;
+      if (tfoot) tfoot.innerHTML = '';
       return;
     }
 
     let rowsHTML = '';
-    let prevWeekData = null;
+    let prevPeriodData = null;
 
-    sortedWeekKeys.forEach((key) => {
-      const curr = weekMap[key];
+    let totalCreated = 0;
+    let totalCompleted = 0;
+    let allInstallDurations = [];
+    let allFaultDurations = [];
+    let allOpenAges = [];
+    let latestBacklog = 0;
+
+    sortedPeriodKeys.forEach((key, index) => {
+      const curr = periodMap[key];
       const avgMTTI = calculateMean(curr.installDurations);
       const avgMTTR = calculateMean(curr.faultDurations);
       const avgOpenAge = calculateMean(curr.openAges) / 24; // convert to days
       const backlog = curr.openAges.length;
+      
+      // Update totals
+      totalCreated += curr.created;
+      totalCompleted += curr.completed;
+      allInstallDurations.push(...curr.installDurations);
+      allFaultDurations.push(...curr.faultDurations);
+      allOpenAges.push(...curr.openAges);
+      if (index === sortedPeriodKeys.length - 1) {
+        latestBacklog = backlog;
+      }
 
-      // Calculate WoW Change % on Completed Jobs
+      // Calculate Change % on Completed Jobs
       let changePercent = 0;
       let arrowHTML = '';
 
-      if (prevWeekData) {
-        changePercent = calculatePercentageChange(prevWeekData.completed, curr.completed);
+      if (prevPeriodData) {
+        changePercent = calculatePercentageChange(prevPeriodData.completed, curr.completed);
         if (changePercent > 0) {
           arrowHTML = `<span class="inline-flex items-center text-emerald-400 font-bold ml-1">↑ +${changePercent.toFixed(1)}%</span>`;
         } else if (changePercent < 0) {
@@ -334,10 +383,29 @@ export class DashboardManager {
         </tr>
       `;
 
-      prevWeekData = curr;
+      prevPeriodData = curr;
     });
 
     tbody.innerHTML = rowsHTML;
+    
+    if (tfoot) {
+      const totalAvgMTTI = calculateMean(allInstallDurations);
+      const totalAvgMTTR = calculateMean(allFaultDurations);
+      const totalAvgOpenAge = calculateMean(allOpenAges) / 24;
+      
+      tfoot.innerHTML = `
+        <tr>
+          <td class="p-3 text-white">Total / Average</td>
+          <td class="p-3 text-right font-mono text-blue-400">${totalCreated}</td>
+          <td class="p-3 text-right font-mono text-emerald-400">${totalCompleted}</td>
+          <td class="p-3 text-right font-mono text-slate-300">${formatHours(totalAvgMTTI)}</td>
+          <td class="p-3 text-right font-mono text-slate-300">${formatHours(totalAvgMTTR)}</td>
+          <td class="p-3 text-right font-mono text-amber-400">${formatNumber(totalAvgOpenAge, 1)} days</td>
+          <td class="p-3 text-right font-mono text-slate-300">${latestBacklog}</td>
+          <td class="p-3 text-right text-slate-500">-</td>
+        </tr>
+      `;
+    }
   }
 
   /**
@@ -452,6 +520,83 @@ export class DashboardManager {
 
     fastestContainer.innerHTML = renderList(sortedFastest, 'text-emerald-400');
     slowestContainer.innerHTML = renderList(sortedSlowest, 'text-rose-400');
+  }
+
+  /**
+   * Render Manager Hold Tickets Section
+   */
+  renderManagerHoldSection() {
+    const tbody = document.getElementById('manager-hold-tbody');
+    const breakdownContainer = document.getElementById('onhold-reasons-breakdown');
+    if (!tbody || !breakdownContainer) return;
+
+    // Filter jobs with status 'Manager Hold'
+    const holdJobs = this.filteredJobs.filter((j) => j.status === 'Manager Hold');
+
+    if (holdJobs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">No active Manager Hold tickets found.</td></tr>`;
+      breakdownContainer.innerHTML = `<p class="text-xs text-slate-500 p-3">No active Manager Hold tickets to analyze.</p>`;
+      return;
+    }
+
+    // Sort by oldest (highest openAgeHours)
+    const sortedHoldJobs = [...holdJobs].sort((a, b) => (b.openAgeHours || 0) - (a.openAgeHours || 0));
+
+    // Render list
+    let rowsHTML = '';
+    sortedHoldJobs.forEach((j) => {
+      // KPI is the Hold Age
+      const holdAgeStr = formatHours(j.openAgeHours || 0);
+      const holdAgeDaysStr = formatDays(j.openAgeHours || 0);
+      const holdReason = j.onHoldReason || 'No reason specified';
+
+      rowsHTML += `
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+          <td class="p-3 font-mono font-bold text-white">
+            <span class="hover:underline cursor-pointer" onclick="window.dashboardManager.openDrillDownModal('STATUS:Manager Hold', 'Manager Hold Jobs')">
+              ${escapeHTML(j.jobNumber)}
+            </span>
+          </td>
+          <td class="p-3 text-slate-300 text-xs">${escapeHTML(j.department)}</td>
+          <td class="p-3 text-slate-300 text-xs">${escapeHTML(j.region)}</td>
+          <td class="p-3 text-right font-mono font-bold text-amber-400">
+            <div>${holdAgeStr}</div>
+            <div class="text-[10px] text-slate-500">${holdAgeDaysStr}</div>
+          </td>
+          <td class="p-3 text-slate-400 text-xs max-w-[200px] truncate" title="${escapeHTML(holdReason)}">
+            ${escapeHTML(holdReason)}
+          </td>
+        </tr>
+      `;
+    });
+    tbody.innerHTML = rowsHTML;
+
+    // Breakdown of hold reasons
+    const reasonCounts = {};
+    holdJobs.forEach((j) => {
+      const reason = j.onHoldReason || 'No reason specified';
+      reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+    });
+
+    const sortedReasons = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]);
+    const totalHolds = holdJobs.length;
+
+    let breakdownHTML = '';
+    sortedReasons.forEach(([reason, count]) => {
+      const pct = (count / totalHolds) * 100;
+      breakdownHTML += `
+        <div class="p-3 bg-slate-800/40 border border-slate-700/40 rounded-xl space-y-1.5 hover:border-slate-600 transition-all">
+          <div class="flex justify-between items-start gap-2">
+            <span class="text-xs font-semibold text-slate-200 line-clamp-2" title="${escapeHTML(reason)}">${escapeHTML(reason)}</span>
+            <span class="text-xs font-bold text-amber-400 font-mono whitespace-nowrap bg-amber-500/10 px-2 py-0.5 rounded-full">${count} (${pct.toFixed(1)}%)</span>
+          </div>
+          <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+            <div class="bg-amber-500 h-1.5 rounded-full" style="width: ${pct}%"></div>
+          </div>
+        </div>
+      `;
+    });
+    breakdownContainer.innerHTML = breakdownHTML;
   }
 
   /**

@@ -92,6 +92,7 @@ function mapRawRow(rawRow) {
     priority: 'Normal',
     category: 'General',
     subCategory: 'N/A',
+    onHoldReason: '',
     durationHours: 0,
     businessHours: 0,
     openAgeHours: 0,
@@ -142,6 +143,16 @@ function mapRawRow(rawRow) {
   }
   if (!job.dateCreated && rawRow['DateCreated']) job.dateCreated = parseDate(rawRow['DateCreated']);
   if (!job.dateFinished && rawRow['DateFinished']) job.dateFinished = parseDate(rawRow['DateFinished']);
+
+  const rReason = rawRow['RescheduleReason'] || rawRow['reschedulereason'] || rawRow['Reschedule Reason'] || '';
+  const fReason = rawRow['FailureReason'] || rawRow['failurereason'] || rawRow['Failure Reason'] || '';
+  const noteText = rawRow['Note'] || rawRow['note'] || '';
+  const descText = rawRow['Description'] || rawRow['description'] || '';
+  let candReason = (rReason || fReason || noteText || job.subCategory || descText || '').trim();
+  if (!candReason || candReason.toUpperCase() === 'N/A' || candReason === 'FOUND') {
+    candReason = 'No reason specified';
+  }
+  job.onHoldReason = candReason;
 
   return job;
 }
